@@ -1,3 +1,19 @@
+# svglite 1.1.0
+
+* Text metrics now converted from points to pixels (#45, #48) - this
+  fixes text alignment issues.
+
+* Intermediate outputs are always valid SVG (#53).
+
+* New `svgstring()` returns plot as a string (#40, @yixuan).
+
+* Use raster test compatible with older versions of R.
+
+* Add support for `clip()`. This also fixes a number of minor issues with
+  grid graphics (@yixuan, #47 and #49).
+
+* Fix incorrect device size (#50).
+
 # svglite 1.0.0
 
 svglite is fully featured svg graphics device that works on all platforms, forked from RSvgDevice. It supports all graphics device features:

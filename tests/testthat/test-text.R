@@ -116,3 +116,16 @@ test_that("symbol font family is 'symbol'", {
   expect_equal(style_attr(text, "font-family"), c("symbol"))
 })
 
+test_that("strwidth and height correctly computed", {
+  svglite("test-text.svg", 4, 4)
+  on.exit(dev.off())
+
+  plot.new()
+  str <- "This is a string"
+  text(0.5, 0.5, str)
+
+  h <- strheight(str)
+  w <- strwidth(str)
+
+  rect(0.5 - w / 2, 0.5 - h / 2, 0.5 + w / 2, 0.5 + h / 2)
+})
