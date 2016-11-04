@@ -20,6 +20,7 @@
 #include <gdtools.h>
 #include <string>
 #include <iomanip>
+#include <sstream>
 #include <boost/shared_ptr.hpp>
 #include <R_ext/GraphicsEngine.h>
 
@@ -33,28 +34,31 @@ public:
   SvgStreamPtr stream;
 
   int pageno;
-  int clipno;  // ID for the clip path
+  std::string clipid;  // ID for the clip path
   double clipx0, clipx1, clipy0, clipy1;  // Save the previous clip path to avoid duplication
   bool standalone;
+  Rcpp::List system_aliases;
+  Rcpp::List user_aliases;
   XPtrCairoContext cc;
 
-  SVGDesc(SvgStreamPtr stream_, bool standalone_):
+  SVGDesc(SvgStreamPtr stream_, bool standalone_, Rcpp::List aliases_):
       stream(stream_),
       pageno(0),
-      clipno(0),
       clipx0(0), clipx1(0), clipy0(0), clipy1(0),
       standalone(standalone_),
+      system_aliases(Rcpp::wrap(aliases_["system"])),
+      user_aliases(Rcpp::wrap(aliases_["user"])),
       cc(gdtools::context_create()) {
   }
 };
 
 inline bool is_black(int col) {
-  return (R_RED(col) == 0) && (R_GREEN(col) == 0) && (R_BLUE(col) == 0);
+  return (R_RED(col) == 0) && (R_GREEN(col) == 0) && (R_BLUE(col) == 0) &&
+    (R_ALPHA(col) == 255);
 }
 
 inline bool is_filled(int col) {
-  const int alpha = R_ALPHA(col);
-  return (col != NA_INTEGER) && (alpha != 0);
+  return R_ALPHA(col) != 0;
 }
 
 inline bool is_bold(int face) {
@@ -63,20 +67,82 @@ inline bool is_bold(int face) {
 inline bool is_italic(int face) {
   return face == 3 || face == 4;
 }
+inline bool is_bolditalic(int face) {
+  return face == 4;
+}
+inline bool is_symbol(int face) {
+  return face == 5;
+}
 
-inline std::string fontname(const char* family_, int face) {
-  std::string family(family_);
-  if (face == 5) return "symbol";
-
-  if (family == "mono") {
-    return "courier";
-  } else if (family == "serif") {
-    return "Times New Roman";
-  } else if (family == "sans" || family == "") {
-    return "Arial";
-  } else {
-    return family;
+inline std::string find_alias_field(std::string& family, Rcpp::List& alias,
+                                    const char* face, const char* field) {
+  if (alias.containsElementNamed(face)) {
+    Rcpp::List font = alias[face];
+    if (font.containsElementNamed(field))
+      return font[field];
   }
+  return std::string();
+}
+
+inline std::string find_user_alias(std::string& family,
+                                   Rcpp::List const& aliases,
+                                   int face, const char* field) {
+  std::string out;
+  if (aliases.containsElementNamed(family.c_str())) {
+    Rcpp::List alias = aliases[family];
+    if (is_bolditalic(face))
+      out = find_alias_field(family, alias, "bolditalic", field);
+    else if (is_bold(face))
+      out = find_alias_field(family, alias, "bold", field);
+    else if (is_italic(face))
+      out = find_alias_field(family, alias, "italic", field);
+    else if (is_symbol(face))
+      out = find_alias_field(family, alias, "symbol", field);
+    else
+      out = find_alias_field(family, alias, "plain", field);
+  }
+  return out;
+}
+
+inline std::string find_system_alias(std::string& family,
+                                     Rcpp::List const& aliases) {
+  std::string out;
+  if (aliases.containsElementNamed(family.c_str())) {
+    SEXP alias = aliases[family];
+    if (TYPEOF(alias) == STRSXP && Rf_length(alias) == 1)
+      out = Rcpp::as<std::string>(alias);
+  }
+  return out;
+}
+
+inline std::string fontname(const char* family_, int face,
+                            Rcpp::List const& system_aliases,
+                            Rcpp::List const& user_aliases) {
+  std::string family(family_);
+  if (face == 5)
+    family = "symbol";
+  else if (family == "")
+    family = "sans";
+
+  std::string alias = find_system_alias(family, system_aliases);
+  if (!alias.size())
+    alias = find_user_alias(family, user_aliases, face, "name");
+
+  if (alias.size())
+    return alias;
+  else
+    return family;
+}
+
+inline std::string fontfile(const char* family_, int face,
+                            Rcpp::List user_aliases) {
+  std::string family(family_);
+  if (face == 5)
+    family = "symbol";
+  else if (family == "")
+    family = "sans";
+
+  return find_user_alias(family, user_aliases, face, "file");
 }
 
 inline void write_escaped(SvgStreamPtr stream, const char* text) {
@@ -99,11 +165,11 @@ inline void write_attr_str(SvgStreamPtr stream, const char* attr, const char* va
 }
 
 // Writing clip path attribute
-inline void write_attr_clip(SvgStreamPtr stream, int clipno) {
-  if (clipno < 1)
+inline void write_attr_clip(SvgStreamPtr stream, std::string clipid) {
+  if (!clipid.size())
     return;
 
-  (*stream) << " clip-path='url(#cp" << clipno << ")'";
+  (*stream) << " clip-path='url(#cp" << clipid << ")'";
 }
 
 // Beginning of writing style attributes
@@ -122,7 +188,7 @@ inline void write_style_col(SvgStreamPtr stream, const char* attr, int col, bool
 
   if(!first)  (*stream) << ' ';
 
-  if (col == NA_INTEGER || alpha == 0) {
+  if (alpha == 0) {
     (*stream) << attr << ": none;";
     return;
   } else {
@@ -139,14 +205,22 @@ inline void write_style_dbl(SvgStreamPtr stream, const char* attr, double value,
 }
 
 inline void write_style_fontsize(SvgStreamPtr stream, double value, bool first = false) {
-  if(!first)  (*stream) << ' ';
-  (*stream) << "font-size: " << value << "pt;";
+  if(!first) (*stream) << ' ';
+  // Firefox requires that we provide a unit (even though px is
+  // redundant here)
+  (*stream) << "font-size: " << value << "px;";
 }
 
 // Writing style attributes whose values are strings
 inline void write_style_str(SvgStreamPtr stream, const char* attr, const char* value, bool first = false) {
   if(!first)  (*stream) << ' ';
   (*stream) << attr << ": " << value << ';';
+}
+
+inline double scale_lty(int lty, double lwd) {
+  // Don't rescale if lwd < 1
+  // https://github.com/wch/r-source/blob/master/src/library/grDevices/src/cairo/cairoFns.c#L134
+  return ((lwd > 1) ? lwd : 1) * (lty & 15);
 }
 
 // Writing style attributes related to line types
@@ -166,14 +240,15 @@ inline void write_style_linetype(SvgStreamPtr stream, const pGEcontext gc, bool 
   case LTY_SOLID: // default svg setting, so don't need to write out
     break;
   default:
-    // See comment in GraphicsEngine.h for how this works
+    // For details
+    // https://github.com/wch/r-source/blob/trunk/src/include/R_ext/GraphicsEngine.h#L337
     (*stream) << " stroke-dasharray: ";
     // First number
-    (*stream) << (int) gc->lwd * (lty & 15);
+    (*stream) << scale_lty(lty, gc->lwd);
     lty = lty >> 4;
     // Remaining numbers
     for(int i = 1 ; i < 8 && lty & 15; i++) {
-      (*stream) << ',' << (int) gc->lwd * (lty & 15);
+      (*stream) << ',' << scale_lty(lty, gc->lwd);
       lty = lty >> 4;
     }
     stream->put(';');
@@ -229,13 +304,14 @@ void svg_metric_info(int c, const pGEcontext gc, double* ascent,
     str[1] = '\0';
   }
 
-  gdtools::context_set_font(svgd->cc, fontname(gc->fontfamily, gc->fontface),
-    gc->cex * gc->ps, is_bold(gc->fontface), is_italic(gc->fontface));
+  std::string file = fontfile(gc->fontfamily, gc->fontface, svgd->user_aliases);
+  std::string name = fontname(gc->fontfamily, gc->fontface, svgd->system_aliases, svgd->user_aliases);
+  gdtools::context_set_font(svgd->cc, name, gc->cex * gc->ps, is_bold(gc->fontface), is_italic(gc->fontface), file);
   FontMetric fm = gdtools::context_extents(svgd->cc, std::string(str));
 
-  *ascent = fm.ascent * 96.0 / 72;
-  *descent = fm.descent * 96.0 / 72;
-  *width = fm.width * 96.0 / 72;
+  *ascent = fm.ascent;
+  *descent = fm.descent;
+  *width = fm.width;
 }
 
 void svg_clip(double x0, double x1, double y0, double y1, pDevDesc dd) {
@@ -249,18 +325,23 @@ void svg_clip(double x0, double x1, double y0, double y1, pDevDesc dd) {
       std::abs(y1 - svgd->clipy1) < 0.01)
     return;
 
-  svgd->clipno++;
+  std::ostringstream s;
+  s << x0 << "|" << x1 << "|" << y0 << "|" << y1;
+  std::string clipid = gdtools::base64_string_encode(s.str());
+
+  svgd->clipid = clipid;
   svgd->clipx0 = x0;
   svgd->clipx1 = x1;
   svgd->clipy0 = y0;
   svgd->clipy1 = y1;
 
   (*stream) << "<defs>\n";
-  (*stream) << "  <clipPath id='cp" << svgd->clipno << "'>\n";
+  (*stream) << "  <clipPath id='cp" << svgd->clipid << "'>\n";
   (*stream) << "    <rect x='" << std::min(x0, x1) << "' y='" << std::min(y0, y1) <<
     "' width='" << std::abs(x1 - x0) << "' height='" << std::abs(y1 - y0) << "' />\n";
   (*stream) << "  </clipPath>\n";
   (*stream) << "</defs>\n";
+  stream->flush();
 }
 
 void svg_new_page(const pGEcontext gc, pDevDesc dd) {
@@ -322,13 +403,12 @@ VOID_END_RCPP
 
 void svg_close(pDevDesc dd) {
   SVGDesc *svgd = (SVGDesc*) dd->deviceSpecific;
-
-  *(svgd->stream) << "</svg>\n";
+  svgd->stream->finish();
   delete(svgd);
 }
 
 void svg_line(double x1, double y1, double x2, double y2,
-                     const pGEcontext gc, pDevDesc dd) {
+              const pGEcontext gc, pDevDesc dd) {
   SVGDesc *svgd = (SVGDesc*) dd->deviceSpecific;
   SvgStreamPtr stream = svgd->stream;
 
@@ -339,10 +419,10 @@ void svg_line(double x1, double y1, double x2, double y2,
   write_style_linetype(stream, gc, true);
   write_style_end(stream);
 
-  write_attr_clip(stream, svgd->clipno);
+  write_attr_clip(stream, svgd->clipid);
 
   (*stream) << " />\n";
-  stream->finish();
+  stream->flush();
 }
 
 void svg_poly(int n, double *x, double *y, int filled, const pGEcontext gc,
@@ -364,7 +444,7 @@ void svg_poly(int n, double *x, double *y, int filled, const pGEcontext gc,
     write_style_col(stream, "fill", gc->fill);
   write_style_end(stream);
 
-  write_attr_clip(stream, svgd->clipno);
+  write_attr_clip(stream, svgd->clipid);
 
   (*stream) << " />\n";
   stream->flush();
@@ -413,7 +493,7 @@ void svg_path(double *x, double *y,
   write_style_linetype(stream, gc);
   write_style_end(stream);
 
-  write_attr_clip(stream, svgd->clipno);
+  write_attr_clip(stream, svgd->clipid);
 
   (*stream) << " />\n";
   stream->flush();
@@ -422,11 +502,12 @@ void svg_path(double *x, double *y,
 double svg_strwidth(const char *str, const pGEcontext gc, pDevDesc dd) {
   SVGDesc *svgd = (SVGDesc*) dd->deviceSpecific;
 
-  gdtools::context_set_font(svgd->cc, fontname(gc->fontfamily, gc->fontface),
-    gc->cex * gc->ps, is_bold(gc->fontface), is_italic(gc->fontface));
+  std::string file = fontfile(gc->fontfamily, gc->fontface, svgd->user_aliases);
+  std::string name = fontname(gc->fontfamily, gc->fontface, svgd->system_aliases, svgd->user_aliases);
+  gdtools::context_set_font(svgd->cc, name, gc->cex * gc->ps, is_bold(gc->fontface), is_italic(gc->fontface), file);
   FontMetric fm = gdtools::context_extents(svgd->cc, std::string(str));
 
-  return fm.width * 96 / 72;
+  return fm.width;
 }
 
 void svg_rect(double x0, double y0, double x1, double y1,
@@ -444,7 +525,7 @@ void svg_rect(double x0, double y0, double x1, double y1,
     write_style_col(stream, "fill", gc->fill);
   write_style_end(stream);
 
-  write_attr_clip(stream, svgd->clipno);
+  write_attr_clip(stream, svgd->clipid);
 
   (*stream) << " />\n";
   stream->flush();
@@ -463,7 +544,7 @@ void svg_circle(double x, double y, double r, const pGEcontext gc,
     write_style_col(stream, "fill", gc->fill);
   write_style_end(stream);
 
-  write_attr_clip(stream, svgd->clipno);
+  write_attr_clip(stream, svgd->clipid);
 
   (*stream) << " />\n";
   stream->flush();
@@ -476,9 +557,9 @@ void svg_text(double x, double y, const char *str, double rot,
 
   // If we specify the clip path inside <text>, the "transform" also
   // affects the clip path, so we need to specify clip path at an outer level
-  if (svgd->clipno > 0) {
+  if (svgd->clipid.size()) {
     (*stream) << "<g";
-    write_attr_clip(stream, svgd->clipno);
+    write_attr_clip(stream, svgd->clipid);
     stream->put('>');
   }
 
@@ -492,8 +573,10 @@ void svg_text(double x, double y, const char *str, double rot,
       x, y, -1.0 * rot);
   }
 
+  double fontsize = gc->cex * gc->ps;
+
   write_style_begin(stream);
-  write_style_fontsize(stream, gc->cex * gc->ps, true);
+  write_style_fontsize(stream, fontsize, true);
   if (is_bold(gc->fontface))
     write_style_str(stream, "font-weight", "bold");
   if (is_italic(gc->fontface))
@@ -501,17 +584,22 @@ void svg_text(double x, double y, const char *str, double rot,
   if (!is_black(gc->col))
     write_style_col(stream, "fill", gc->col);
 
-  std::string font = fontname(gc->fontfamily, gc->fontface);
+  std::string font = fontname(gc->fontfamily, gc->fontface, svgd->system_aliases, svgd->user_aliases);
   write_style_str(stream, "font-family", font.c_str());
   write_style_end(stream);
 
+  std::string file = fontfile(gc->fontfamily, gc->fontface, svgd->user_aliases);
+  gdtools::context_set_font(svgd->cc, font, fontsize, is_bold(gc->fontface), is_italic(gc->fontface), file);
+  FontMetric fm = gdtools::context_extents(svgd->cc, std::string(str));
+  (*stream) << " textLength='" << fm.width << "px'";
+  (*stream) << " lengthAdjust='spacingAndGlyphs'";
   stream->put('>');
 
   write_escaped(stream, str);
 
   (*stream) << "</text>";
 
-  if (svgd->clipno > 0)
+  if (svgd->clipid.size())
     (*stream) << "</g>";
 
   stream->put('\n');
@@ -548,9 +636,9 @@ void svg_raster(unsigned int *raster, int w, int h,
 
   // If we specify the clip path inside <image>, the "transform" also
   // affects the clip path, so we need to specify clip path at an outer level
-  if (svgd->clipno > 0) {
+  if (svgd->clipid.size()) {
     (*stream) << "<g";
-    write_attr_clip(stream, svgd->clipno);
+    write_attr_clip(stream, svgd->clipid);
     stream->put('>');
   }
 
@@ -567,7 +655,7 @@ void svg_raster(unsigned int *raster, int w, int h,
   (*stream) << " xlink:href='data:image/png;base64," << base64_str << '\'';
   (*stream) << "/>";
 
-  if (svgd->clipno > 0)
+  if (svgd->clipid.size())
     (*stream) << "</g>";
 
   stream->put('\n');
@@ -576,7 +664,8 @@ void svg_raster(unsigned int *raster, int w, int h,
 
 
 pDevDesc svg_driver_new(SvgStreamPtr stream, int bg, double width,
-                        double height, double pointsize, bool standalone) {
+                        double height, double pointsize,
+                        bool standalone, Rcpp::List& aliases) {
 
   pDevDesc dd = (DevDesc*) calloc(1, sizeof(DevDesc));
   if (dd == NULL)
@@ -641,19 +730,20 @@ pDevDesc svg_driver_new(SvgStreamPtr stream, int bg, double width,
   dd->haveTransparency = 2;
   dd->haveTransparentBg = 2;
 
-  dd->deviceSpecific = new SVGDesc(stream, standalone);
+  dd->deviceSpecific = new SVGDesc(stream, standalone, aliases);
   return dd;
 }
 
 void makeDevice(SvgStreamPtr stream, std::string bg_, double width, double height,
-  double pointsize, bool standalone) {
+                double pointsize, bool standalone, Rcpp::List& aliases) {
 
   int bg = R_GE_str2col(bg_.c_str());
 
   R_GE_checkVersionOrDie(R_GE_version);
   R_CheckDeviceAvailable();
   BEGIN_SUSPEND_INTERRUPTS {
-    pDevDesc dev = svg_driver_new(stream, bg, width, height, pointsize, standalone);
+    pDevDesc dev = svg_driver_new(stream, bg, width, height, pointsize,
+                                  standalone, aliases);
     if (dev == NULL)
       Rcpp::stop("Failed to start SVG device");
 
@@ -666,20 +756,35 @@ void makeDevice(SvgStreamPtr stream, std::string bg_, double width, double heigh
 
 // [[Rcpp::export]]
 bool svglite_(std::string file, std::string bg, double width, double height,
-             double pointsize, bool standalone) {
+              double pointsize, bool standalone, Rcpp::List aliases) {
 
   SvgStreamPtr stream(new SvgStreamFile(file));
-  makeDevice(stream, bg, width, height, pointsize, standalone);
+  makeDevice(stream, bg, width, height, pointsize, standalone, aliases);
 
   return true;
 }
 
 // [[Rcpp::export]]
-bool svgstring_(Rcpp::Environment env, std::string bg, double width, double height,
-  double pointsize, bool standalone) {
+Rcpp::XPtr<std::stringstream> svgstring_(Rcpp::Environment env, std::string bg,
+                                         double width, double height, double pointsize,
+                                         bool standalone, Rcpp::List aliases) {
 
   SvgStreamPtr stream(new SvgStreamString(env));
-  makeDevice(stream, bg, width, height, pointsize, standalone);
+  makeDevice(stream, bg, width, height, pointsize, standalone, aliases);
 
-  return true;
+  SvgStreamString* strstream = static_cast<SvgStreamString*>(stream.get());
+
+  return strstream->string_src();
+}
+
+// [[Rcpp::export]]
+std::string get_svg_content(Rcpp::XPtr<std::stringstream> p) {
+  p->flush();
+  std::string svgstr = p->str();
+  // If the current SVG is empty, we also make the string empty
+  // Otherwise append "</svg>" to make it a valid SVG
+  if(!svgstr.empty()) {
+    svgstr.append("</svg>");
+  }
+  return svgstr;
 }

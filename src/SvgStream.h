@@ -49,6 +49,9 @@ public:
   void write(char data)           { stream_ << data; }
   void write(const std::string& data) { stream_ << data; }
 
+  // Adding a final newline here creates problems on Windows when
+  // seeking back to original position. So we only write the newline
+  // in finish()
   void flush() {
     stream_ << "</svg>";
     stream_.seekp(-6, std::ios_base::cur);
@@ -56,6 +59,8 @@ public:
   }
 
   void finish() {
+    stream_ << "</svg>\n";
+    stream_.flush();
   }
 
   ~SvgStreamFile() {
@@ -71,6 +76,7 @@ class SvgStreamString : public SvgStream {
 public:
   SvgStreamString(Rcpp::Environment env): env_(env) {
     stream_ << std::fixed << std::setprecision(2);
+    env_["is_closed"] = false;
   }
 
   void write(int data)                { stream_ << data; }
@@ -79,20 +85,31 @@ public:
   void write(char data)               { stream_ << data; }
   void write(const std::string& data) { stream_ << data; }
 
-  void seek(int n) {
-    stream_.seekg(n, std::ios_base::cur);
-  }
-
   void flush() {
-    stream_.flush();
-    env_["svg_string"] = stream_.str() + "</svg>";
   }
 
   void finish() {
-    flush();
+    // When device is closed, stream_ will be destroyed, so we can no longer
+    // get the svg string from stream_. In this case, we save the final string
+    // to the environment env, so that R can read from env$svg_string even
+    // after device is closed.
+    env_["is_closed"] = true;
+
+    stream_.flush();
+    std::string svgstr = stream_.str();
+    // If the current svg is empty, we also make the string empty
+    // Otherwise append "</svg>" to make it a valid SVG
+    if(!svgstr.empty()) {
+      svgstr.append("</svg>");
+    }
+    env_["svg_string"] = svgstr;
   }
 
-
+  Rcpp::XPtr<std::stringstream> string_src() {
+    // `false` means this pointer should not be "deleted" by R
+    // The object will be automatically destroyed when device is closed
+    return Rcpp::XPtr<std::stringstream>(&stream_, false);
+  }
 };
 
 
