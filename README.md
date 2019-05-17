@@ -12,7 +12,7 @@ Install the development version from github with:
 
 ```R
 # install.packages("devtools")
-devtools::install_github("hadley/svglite")
+devtools::install_github("r-lib/svglite")
 ```
 
 ## Benchmarks

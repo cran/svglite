@@ -1,5 +1,5 @@
 Package: svglite
-Version: 1.2.1
+Version: 1.2.2
 Title: An 'SVG' Graphics Device
 Description: A graphics device for R that produces 'Scalable Vector Graphics'.
   'svglite' is a fork of the older 'RSvgDevice' package.
@@ -27,7 +27,7 @@ BugReports: https://github.com/r-lib/svglite/issues
 RoxygenNote: 6.0.1
 VignetteBuilder: knitr
 NeedsCompilation: yes
-Packaged: 2017-09-11 18:24:26 UTC; lionel
+Packaged: 2019-05-17 17:26:44 UTC; lionel
 Author: Hadley Wickham [aut],
   Lionel Henry [aut, cre],
   T Jake Luciani [aut],
@@ -40,4 +40,4 @@ Author: Hadley Wickham [aut],
   RStudio [cph]
 Maintainer: Lionel Henry <lionel@rstudio.com>
 Repository: CRAN
-Date/Publication: 2017-09-11 20:04:15 UTC
+Date/Publication: 2019-05-17 17:50:03 UTC

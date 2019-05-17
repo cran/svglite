@@ -4,6 +4,7 @@
 #include <fstream>
 #include <sstream>
 #include <Rcpp.h>
+#include "utils.h"
 
 class SvgStream {
   public:
@@ -27,6 +28,13 @@ class SvgStream {
 template <typename T>
 SvgStream& operator<<(SvgStream& object, const T& data) {
   object.write(data);
+  return object;
+}
+template <>
+SvgStream& operator<<(SvgStream& object, const double& data) {
+  // Make sure negative zeros are converted to positive zero for
+  // reproducibility of SVGs
+  object.write(dbl_format(data));
   return object;
 }
 

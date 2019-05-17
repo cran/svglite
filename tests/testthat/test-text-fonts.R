@@ -72,3 +72,17 @@ test_that("metrics are computed for different fonts", {
   expect_false(x_attr[[1]] == x_attr[[2]])
   expect_false(y_attr[[1]] == y_attr[[2]])
 })
+
+test_that("unicode characters in plotmath are handled", {
+  rho <- as.name("\u03c1")
+  expr <- call("*", rho, rho)
+
+  x <- xmlSVG({
+    plot.new()
+    text(0.5, 0.5, as.expression(expr))
+  })
+  text <- xml_find_all(x, ".//text")
+  x_attr <- as.double(xml_attr(text, "x"))
+
+  expect_true(x_attr[2] - x_attr[1] > 0)
+})
