@@ -39,7 +39,7 @@
 #' @seealso \code{\link{pictex}}, \code{\link{postscript}}, \code{\link{Devices}}
 #' @examples
 #' # Save to file
-#' svglite("Rplots.svg")
+#' svglite(tempfile("Rplots.svg"))
 #' plot(1:11, (-5:5)^2, type = 'b', main = "Simple Example")
 #' dev.off()
 #'
@@ -48,7 +48,7 @@
 #'
 #' # Then supply a list of aliases:
 #' fonts <- list(sans = "Verdana", mono = "Times New Roman")
-#' svglite("Rplots.svg", system_fonts = fonts)
+#' svglite(tempfile("Rplots.svg"), system_fonts = fonts)
 #' plot.new()
 #' text(0.5, 0.5, "Some text", family = "mono")
 #' dev.off()
@@ -75,7 +75,6 @@ svglite <- function(file = "Rplots.svg", width = 10, height = 8,
 #' See \code{\link{svglite}()} documentation for information about
 #' specifying fonts.
 #'
-#' @param ... Arguments passed on to \code{\link{svglite}}.
 #' @return A function with no arguments: call the function to get the
 #'   current value of the string.
 #' @examples

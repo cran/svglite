@@ -4,9 +4,16 @@
 \alias{svglite}
 \title{An SVG Graphics Driver}
 \usage{
-svglite(file = "Rplots.svg", width = 10, height = 8, bg = "white",
-  pointsize = 12, standalone = TRUE, system_fonts = list(),
-  user_fonts = list())
+svglite(
+  file = "Rplots.svg",
+  width = 10,
+  height = 8,
+  bg = "white",
+  pointsize = 12,
+  standalone = TRUE,
+  system_fonts = list(),
+  user_fonts = list()
+)
 }
 \arguments{
 \item{file}{The file where output will appear.}
@@ -51,7 +58,7 @@ svg. See the \code{fonts} vignette for more information.
 }
 \examples{
 # Save to file
-svglite("Rplots.svg")
+svglite(tempfile("Rplots.svg"))
 plot(1:11, (-5:5)^2, type = 'b', main = "Simple Example")
 dev.off()
 
@@ -60,7 +67,7 @@ gdtools::match_family("Verdana")
 
 # Then supply a list of aliases:
 fonts <- list(sans = "Verdana", mono = "Times New Roman")
-svglite("Rplots.svg", system_fonts = fonts)
+svglite(tempfile("Rplots.svg"), system_fonts = fonts)
 plot.new()
 text(0.5, 0.5, "Some text", family = "mono")
 dev.off()
