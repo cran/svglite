@@ -1,4 +1,4 @@
-befb6b0c2fbeffd1d1f9de66cce5b647 *DESCRIPTION
+0065747cd6ad9a737e63dd270914099d *DESCRIPTION
 19a0f2c62b2641fb687242215c72b765 *NAMESPACE
 4784af5ca4949b18a4b4ca277b545786 *NEWS.md
 a39e1237a9247ea029739f831d23c5a0 *R/RcppExports.R
@@ -7,12 +7,12 @@ d68619b219bfb370b6bd90031d1bfbc2 *R/SVG.R
 24ff2eb6cb0a520f767e9344edba9e91 *R/inlineSVG.R
 4c0148d34ce484f1b34e95e99ff3a59d *R/utils.R
 64795954831804305cbd125b6c7817cf *README.md
-3ea4dd7b26be394b3fda996a3c8ac2cb *build/vignette.rds
+3c427ecfbe77ed96fa120f8c4d147df7 *build/vignette.rds
 6b52c0883218cced276162776f6fa66c *inst/doc/fonts.R
 9fb842781d83629c4ae2809434526677 *inst/doc/fonts.Rmd
-ad69f0192a9e02768ffe6e30c70e1b54 *inst/doc/fonts.html
+2edb1877134cce39ba67aebfa858ef29 *inst/doc/fonts.html
 a719a6f689118f77029923a58984c35b *inst/doc/scaling.Rmd
-322523e1223ec78ad0d36eb3b57eedad *inst/doc/scaling.html
+e8b191417e9773303eeb18108986072f *inst/doc/scaling.html
 90db3873c2f3efb4111cd03838850fc5 *man/editSVG.Rd
 1ce96521bbbbdf64c948d75d5476054a *man/htmlSVG.Rd
 e4bd66cc48b3e54bbe7f6f7f3f26f76b *man/stringSVG.Rd
@@ -21,7 +21,7 @@ f4d4cf3d177fe9ae86708d7e654bec37 *man/svgstring.Rd
 ffd702bbac1963b67f3721051bb32f9d *man/xmlSVG.Rd
 0a5283da39219a420123a3f0cbd688a7 *src/RcppExports.cpp
 7217652fe86844f61096a06617968baa *src/SvgStream.h
-10d18458819103b6a11be76ad8e15d61 *src/devSVG.cpp
+72355acc7b17e16e940fef78af415465 *src/devSVG.cpp
 7fd1b00d30647d5817165027c6cda732 *src/utils.h
 91f2cd410fd5085b7afd242b81c6baff *tests/testthat.R
 2cd272758730b87971578703d02a81c7 *tests/testthat/helper-aliases.R

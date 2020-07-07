@@ -671,6 +671,23 @@ void svg_raster(unsigned int *raster, int w, int h,
   stream->flush();
 }
 
+static SEXP svg_setPattern(SEXP pattern, pDevDesc dd) {
+    return R_NilValue;
+}
+
+static void svg_releasePattern(SEXP ref, pDevDesc dd) {} 
+
+static SEXP svg_setClipPath(SEXP path, SEXP ref, pDevDesc dd) {
+    return R_NilValue;
+}
+
+static void svg_releaseClipPath(SEXP ref, pDevDesc dd) {}
+
+static SEXP svg_setMask(SEXP path, SEXP ref, pDevDesc dd) {
+    return R_NilValue;
+}
+
+static void svg_releaseMask(SEXP ref, pDevDesc dd) {}
 
 pDevDesc svg_driver_new(SvgStreamPtr stream, int bg, double width,
                         double height, double pointsize,
@@ -706,6 +723,14 @@ pDevDesc svg_driver_new(SvgStreamPtr stream, int bg, double width,
   dd->metricInfo = svg_metric_info;
   dd->cap = NULL;
   dd->raster = svg_raster;
+#if R_GE_version >= 13
+  dd->setPattern      = svg_setPattern;
+  dd->releasePattern  = svg_releasePattern;
+  dd->setClipPath     = svg_setClipPath;
+  dd->releaseClipPath = svg_releaseClipPath;
+  dd->setMask         = svg_setMask;
+  dd->releaseMask     = svg_releaseMask;
+#endif
 
   // UTF-8 support
   dd->wantSymbolUTF8 = (Rboolean) 1;
@@ -738,6 +763,10 @@ pDevDesc svg_driver_new(SvgStreamPtr stream, int bg, double width,
   dd->displayListOn = FALSE;
   dd->haveTransparency = 2;
   dd->haveTransparentBg = 2;
+
+#if R_GE_version >= 13
+  dd->deviceVersion = R_GE_definitions;
+#endif
 
   dd->deviceSpecific = new SVGDesc(stream, standalone, aliases);
   return dd;
