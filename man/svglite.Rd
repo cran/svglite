@@ -5,18 +5,24 @@
 \title{An SVG Graphics Driver}
 \usage{
 svglite(
-  file = "Rplots.svg",
+  filename = "Rplot\%03d.svg",
   width = 10,
   height = 8,
   bg = "white",
   pointsize = 12,
   standalone = TRUE,
   system_fonts = list(),
-  user_fonts = list()
+  user_fonts = list(),
+  web_fonts = list(),
+  id = NULL,
+  fix_text_size = TRUE,
+  scaling = 1,
+  always_valid = FALSE,
+  file
 )
 }
 \arguments{
-\item{file}{The file where output will appear.}
+\item{filename}{The file where output will appear.}
 
 \item{height, width}{Height and width in inches.}
 
@@ -27,19 +33,53 @@ svglite(
 \item{standalone}{Produce a standalone svg file? If \code{FALSE}, omits
 xml header and default namespace.}
 
-\item{system_fonts}{Named list of font names to be aliased with
-fonts installed on your system. If unspecified, the R default
-families \code{sans}, \code{serif}, \code{mono} and \code{symbol}
-are aliased to the family returned by
-\code{\link[gdtools]{match_family}()}.}
+\item{system_fonts}{\ifelse{html}{\out{<a href='https://www.tidyverse.org/lifecycle/#superseded'><img src='figures/lifecycle-superseded.svg' alt='Superseded lifecycle'></a>}}{\strong{Superseded}} \emph{Consider using
+\code{\link[systemfonts:register_font]{systemfonts::register_font()}} instead}. Named list of font
+names to be aliased with fonts installed on your system. If unspecified,
+the R default families \code{sans}, \code{serif}, \code{mono} and
+\code{symbol} are aliased to the family returned by
+\code{\link[systemfonts]{font_info}()}.}
 
-\item{user_fonts}{Named list of fonts to be aliased with font files
-provided by the user rather than fonts properly installed on the
-system. The aliases can be fonts from the fontquiver package,
-strings containing a path to a font file, or a list containing
+\item{user_fonts}{\ifelse{html}{\out{<a href='https://www.tidyverse.org/lifecycle/#superseded'><img src='figures/lifecycle-superseded.svg' alt='Superseded lifecycle'></a>}}{\strong{Superseded}} \emph{Consider using
+\code{\link[systemfonts:register_font]{systemfonts::register_font()}} instead}. Named list of fonts to
+be aliased with font files provided by the user rather than fonts properly
+installed on the system. The aliases can be fonts from the fontquiver
+package, strings containing a path to a font file, or a list containing
 \code{name} and \code{file} elements with \code{name} indicating
 the font alias in the SVG output and \code{file} the path to a
 font file.}
+
+\item{web_fonts}{A list containing web fonts to use in the SVG. The fonts
+will still need to be available locally on the computer running the code,
+but viewers of the final SVG will not need the font if specified as a web
+font. Web fonts can either be specified using \code{\link[=font_face]{font_face()}} or given as a
+single string in which case they are taken to be URL's for an \verb{@import}
+directive to e.g. Google Fonts.}
+
+\item{id}{A character vector of ids to assign to the generated SVG's. If
+creating more SVG files than supplied ids the exceeding SVG's will not have
+an id tag and a warning will be thrown.}
+
+\item{fix_text_size}{Should the width of strings be fixed so that it doesn't
+change between svg renderers depending on their font rendering? Defaults to
+\code{TRUE}. If \code{TRUE} each string will have the \code{textLength} CSS property set
+to the width calculated by systemfonts and
+\code{lengthAdjust='spacingAndGlyphs'}. Setting this to \code{FALSE} can be
+beneficial for heavy post-processing that may change content or style of
+strings, but may lead to inconsistencies between strings and graphic
+elements that depend on the dimensions of the string (e.g. label borders
+and background).}
+
+\item{scaling}{A scaling factor to apply to the rendered line width and text
+size. Useful for getting the right sizing at the dimension that you
+need.}
+
+\item{always_valid}{Should the svgfile be a valid svg file while it is being
+written to? Setting this to \code{TRUE} will incur a considerable performance
+hit (>50\% additional rendering time) so this should only be set to \code{TRUE}
+if the file is being parsed while it is still being written to.}
+
+\item{file}{Identical to \code{filename}. Provided for backward compatibility.}
 }
 \description{
 This function produces graphics compliant to the current w3 svg XML
@@ -62,29 +102,17 @@ svglite(tempfile("Rplots.svg"))
 plot(1:11, (-5:5)^2, type = 'b', main = "Simple Example")
 dev.off()
 
-# Supply system font aliases. First check the font can be located:
-gdtools::match_family("Verdana")
-
-# Then supply a list of aliases:
-fonts <- list(sans = "Verdana", mono = "Times New Roman")
-svglite(tempfile("Rplots.svg"), system_fonts = fonts)
-plot.new()
-text(0.5, 0.5, "Some text", family = "mono")
-dev.off()
-
-# See the fonts vignettes for more options to deal with fonts
-
 }
 \references{
 \emph{W3C Scalable Vector Graphics (SVG)}:
-  \url{http://www.w3.org/Graphics/SVG/Overview.htm8}
+\url{http://www.w3.org/Graphics/SVG/}
 }
 \seealso{
 \code{\link{pictex}}, \code{\link{postscript}}, \code{\link{Devices}}
 }
 \author{
 This driver was written by T Jake Luciani
-  \email{jakeluciani@yahoo.com} 2012: updated by Matthieu Decorde
-  \email{matthieu.decorde@ens-lyon.fr}
+\email{jakeluciani@yahoo.com} 2012: updated by Matthieu Decorde
+\email{matthieu.decorde@ens-lyon.fr}
 }
 \keyword{device}
