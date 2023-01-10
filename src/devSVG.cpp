@@ -30,6 +30,7 @@ extern "C" {
 #include <systemfonts.h>
 #include <string>
 #include <cstring>
+#include <cstdint>
 #include <iomanip>
 #include <sstream>
 #include <memory>
@@ -296,11 +297,11 @@ inline std::string fontname(const char* family_, int face,
     family = "sans";
 
   std::string alias = find_system_alias(family, system_aliases);
-  if (!alias.size()) {
+  if (alias.empty()) {
     alias = find_user_alias(family, user_aliases, face, "name");
   }
 
-  if (alias.size()) {
+  if (!alias.empty()) {
     return alias;
   }
 
@@ -332,7 +333,7 @@ inline FontSettings get_font_file(const char* family, int face, cpp11::list user
     fontfamily = "sans";
   }
   std::string alias = fontfile(fontfamily, face, user_aliases);
-  if (alias.size() > 0) {
+  if (!alias.empty()) {
     FontSettings result = {};
     std::strncpy(result.file, alias.c_str(), PATH_MAX);
     result.index = 0;
@@ -364,7 +365,7 @@ inline void write_attr_str(SvgStreamPtr stream, const char* attr, const char* va
 
 // Writing clip path attribute
 inline void write_attr_clip(SvgStreamPtr stream, std::string clipid) {
-  if (!clipid.size())
+  if (clipid.empty())
     return;
 
   (*stream) << " clip-path='url(#cp" << clipid << ")'";
@@ -528,7 +529,7 @@ inline void write_style_linetype(SvgStreamPtr stream, const pGEcontext gc, doubl
 }
 
 std::string get_id(SVGDesc *svgd) {
-  if (svgd->ids.size() == 0) {
+  if (svgd->ids.empty()) {
     return "";
   }
   if (svgd->ids.size() == 1) {
@@ -645,7 +646,7 @@ void svg_new_page(const pGEcontext gc, pDevDesc dd) {
     (*stream) << " xmlns:xlink='http://www.w3.org/1999/xlink'";
   }
 
-  if (id.size() > 0)
+  if (!id.empty())
     (*stream) << " id='" << id << "'";
 
   (*stream) << " class='svglite'";
@@ -1152,8 +1153,6 @@ void svg_release_pattern(SEXP ref, pDevDesc dd) {
   if (it != svgd->pattern_cache.end()) {
     svgd->pattern_cache.erase(it);
   }
-
-  return;
 }
 
 SEXP svg_set_clip_path(SEXP path, SEXP ref, pDevDesc dd) {
@@ -1241,8 +1240,6 @@ void svg_release_clip_path(SEXP ref, pDevDesc dd) {
   if (it != svgd->clip_cache.end()) {
     svgd->clip_cache.erase(it);
   }
-
-  return;
 }
 
 SEXP svg_set_mask(SEXP path, SEXP ref, pDevDesc dd) {
@@ -1331,8 +1328,6 @@ void svg_release_mask(SEXP ref, pDevDesc dd) {
   if (it != svgd->mask_cache.end()) {
     svgd->mask_cache.erase(it);
   }
-
-  return;
 }
 
 pDevDesc svg_driver_new(SvgStreamPtr stream, int bg, double width,
