@@ -1,6 +1,6 @@
 Package: svglite
 Title: An 'SVG' Graphics Device
-Version: 2.1.1
+Version: 2.1.2
 Authors@R: c(
     person("Hadley", "Wickham", , "hadley@posit.co", role = "aut"),
     person("Lionel", "Henry", , "lionel@posit.co", role = "aut"),
@@ -17,25 +17,26 @@ Authors@R: c(
            comment = "Improved styles; polypath implementation"),
     person("Håkon", "Malmedal", role = "ctb",
            comment = "Opacity code"),
-    person("RStudio", role = c("cph", "fnd"))
+    person("Posit, PBC", role = c("cph", "fnd"))
   )
 Description: A graphics device for R that produces 'Scalable Vector
     Graphics'. 'svglite' is a fork of the older 'RSvgDevice' package.
 License: GPL (>= 2)
 URL: https://svglite.r-lib.org, https://github.com/r-lib/svglite
 BugReports: https://github.com/r-lib/svglite/issues
-Depends: R (>= 3.0.0)
+Depends: R (>= 3.5.0)
 Imports: systemfonts (>= 1.0.0)
 Suggests: covr, fontquiver (>= 0.2.0), htmltools, knitr, rmarkdown,
-        testthat, xml2 (>= 1.0.0)
+        testthat (>= 3.0.0), xml2 (>= 1.0.0)
 LinkingTo: cpp11, systemfonts
 VignetteBuilder: knitr
 Config/Needs/website: tidyverse/tidytemplate
 Encoding: UTF-8
-RoxygenNote: 7.2.1
-SystemRequirements: C++11, libpng
+RoxygenNote: 7.2.3
+SystemRequirements: libpng
+Config/testthat/edition: 3
 NeedsCompilation: yes
-Packaged: 2023-01-10 07:48:19 UTC; thomas
+Packaged: 2023-10-11 08:07:42 UTC; thomas
 Author: Hadley Wickham [aut],
   Lionel Henry [aut],
   Thomas Lin Pedersen [cre, aut]
@@ -47,7 +48,7 @@ Author: Hadley Wickham [aut],
   David Gohel [ctb] (Line dashing code and early raster code),
   Yixuan Qiu [ctb] (Improved styles; polypath implementation),
   Håkon Malmedal [ctb] (Opacity code),
-  RStudio [cph, fnd]
+  Posit, PBC [cph, fnd]
 Maintainer: Thomas Lin Pedersen <thomas.pedersen@posit.co>
 Repository: CRAN
-Date/Publication: 2023-01-10 09:30:02 UTC
+Date/Publication: 2023-10-11 08:40:02 UTC

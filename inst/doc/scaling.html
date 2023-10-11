@@ -11,7 +11,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 
 
-<meta name="date" content="2023-01-10" />
+<meta name="date" content="2023-10-11" />
 
 <title>Scaling Issues</title>
 
@@ -331,7 +331,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 
 <h1 class="title toc-ignore">Scaling Issues</h1>
-<h4 class="date">2023-01-10</h4>
+<h4 class="date">2023-10-11</h4>
 
 
 
@@ -392,16 +392,16 @@ the final dimensions of the figure.</p>
 <p>A second way is to enclose the figure in a <code>&lt;div&gt;</code>
 tag with appropriate dimensions and let the SVG figure rescale itself to
 that container (cf. the section on fluid scaling):</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">&lt;div</span> <span class="er">style</span><span class="ot">=</span><span class="st">&quot;width: 720pt; height: 576pt&quot;</span><span class="kw">&gt;</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">&lt;img</span> <span class="er">src</span><span class="ot">=</span><span class="st">&quot;figure.svg&quot;</span><span class="kw">&gt;</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">&lt;/div&gt;</span></span></code></pre></div>
+<div class="sourceCode" id="cb1"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="kw">&lt;div</span> <span class="er">style</span><span class="ot">=</span><span class="st">&quot;width: 720pt; height: 576pt&quot;</span><span class="kw">&gt;</span></span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a>  <span class="kw">&lt;img</span> <span class="er">src</span><span class="ot">=</span><span class="st">&quot;figure.svg&quot;</span><span class="kw">&gt;</span></span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a><span class="kw">&lt;/div&gt;</span></span></code></pre></div>
 <p>Finally, you can directly specify the dimensions in the
 <code>&lt;img&gt;</code> or <code>&lt;object&gt;</code> tag that is
 embedding the figure. Note that the dimension attributes of those tags
 do not accept arbitrary units, so you will have to supply the dimensions
 in pixels. Just multiply the width and height measured in points with a
 factor of 16/12:</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">&lt;img</span> <span class="er">src</span><span class="ot">=</span><span class="st">&quot;figure.svg&quot;</span> <span class="er">width</span><span class="ot">=</span><span class="st">&quot;960&quot;</span> <span class="er">height</span><span class="ot">=</span><span class="st">&quot;768&quot;</span><span class="kw">&gt;</span></span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="kw">&lt;img</span> <span class="er">src</span><span class="ot">=</span><span class="st">&quot;figure.svg&quot;</span> <span class="er">width</span><span class="ot">=</span><span class="st">&quot;960&quot;</span> <span class="er">height</span><span class="ot">=</span><span class="st">&quot;768&quot;</span><span class="kw">&gt;</span></span></code></pre></div>
 </div>
 </div>
 <div id="internal-notes" class="section level2">

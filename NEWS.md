@@ -1,3 +1,8 @@
+# svglite 2.1.2
+
+* Windows: use libpng included with Rtools on R 4.2 and up.
+* Add support for `dev.capabilities()`
+
 # svglite 2.1.1
 
 * Fix `<cstdint>` include at request of CRAN
