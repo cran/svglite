@@ -1,6 +1,6 @@
-755e1d119585ff0a921741654bcdbadc *DESCRIPTION
+323dad2dc14fb80bf9516825576c0f35 *DESCRIPTION
 09c52c5ea8be4006af819a7cfcafa73e *NAMESPACE
-578a90388d3d183790a553e70708258e *NEWS.md
+6401f28859bd8c0be60488432d8f13cc *NEWS.md
 0c783316647a8db7421e54aaf743d219 *R/SVG.R
 8354fd5e3939d47a57e9bee580f61860 *R/aaa.R
 8f75c1ad19b049d9b7d071aad81d88d7 *R/cpp11.R
@@ -12,9 +12,9 @@ fd669fea8ed6116c9285072a51c4b035 *README.md
 69012072a2deff65d556c959ef08fc47 *build/vignette.rds
 f77352a3716dff5681a7ba1e09a39b2f *inst/doc/fonts.R
 5e0c4cf1973e5e28617fadad14a8577f *inst/doc/fonts.Rmd
-2e2fc5d1eaaa4f36a09a3d44d61b5cfe *inst/doc/fonts.html
+1845efe3272a19a6beec5e5f7b249929 *inst/doc/fonts.html
 248976c59504edd8120c60d2f45e7d65 *inst/doc/scaling.Rmd
-f490512c7e390d89dd5454d5f3a174cf *inst/doc/scaling.html
+1d20a065e26c2389c3bb11dbf863c72b *inst/doc/scaling.html
 ac04add3779e55e62e1cde3c1fc239c3 *man/create_svgz.Rd
 e5100e690d04ed6c249069e405950ad8 *man/editSVG.Rd
 c4e52de0dfd38f9d9f30fdb2a92b39ae *man/figures/README-unnamed-chunk-3-1.png
@@ -41,7 +41,7 @@ d935ab859c80d872bd972ecc42ed9a54 *man/svglite.Rd
 b48a6378658af3ebc24c61d69c272a9c *src/Makevars.win
 f520cd7cf8226028fcd4e155b67d6907 *src/SvgStream.h
 e068a75315145a7eb6911dbb44863a3b *src/cpp11.cpp
-ad5f057e728fd67997b2cabd78794a3e *src/devSVG.cpp
+65aa62def78c10a1252dafb82e01e369 *src/devSVG.cpp
 3ca7236a09d486462e6c63c161c5d489 *src/svglite_types.h
 e26b8b3bfef1f45f93d853c8136e437e *src/tinyformat.h
 b63d93d36b37a3fd328e20ce620815f5 *src/utils.h
