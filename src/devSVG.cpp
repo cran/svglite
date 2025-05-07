@@ -28,6 +28,7 @@ extern "C" {
 #include <cpp11/external_pointer.hpp>
 #include <cpp11/protect.hpp>
 #include <systemfonts.h>
+#include <textshaping.h>
 #include <string>
 #include <cstring>
 #include <cstdint>
@@ -76,6 +77,9 @@ public:
   std::unordered_set<unsigned int> pattern_cache;
   unsigned int pattern_cache_next_id;
 
+  std::unordered_set<unsigned int> group_cache;
+  unsigned int group_cache_next_id;
+
   SVGDesc(SvgStreamPtr stream_, bool standalone_, cpp11::list aliases_,
           const std::string webfonts_, const std::string& file_, cpp11::strings ids_,
           bool fix_text_size_, double scaling_, bool always_valid_):
@@ -97,7 +101,8 @@ public:
       is_recording_clip(false),
       mask_cache_next_id(0),
       current_mask(-1),
-      pattern_cache_next_id(0) {
+      pattern_cache_next_id(0),
+      group_cache_next_id(0) {
   }
 
   void nextFile() {
@@ -246,8 +251,7 @@ inline std::string raster_to_string(unsigned int *raster, int w, int h, double w
   return base64_encode(buffer.data(), buffer.size());
 }
 
-inline std::string find_alias_field(std::string family, cpp11::list& alias,
-                                    const char* face, const char* field) {
+inline std::string find_alias_field(cpp11::list& alias, const char* face, const char* field) {
   if (alias[face] != R_NilValue) {
     cpp11::list font(alias[face]);
     if (font[field] != R_NilValue)
@@ -256,92 +260,65 @@ inline std::string find_alias_field(std::string family, cpp11::list& alias,
   return std::string();
 }
 
-inline std::string find_user_alias(std::string family,
+inline std::string find_user_alias(const char * family,
                                    cpp11::list const& aliases,
                                    int face, const char* field) {
   std::string out;
-  if (aliases[family.c_str()] != R_NilValue) {
-    cpp11::list alias(aliases[family.c_str()]);
+  if (aliases[family] != R_NilValue) {
+    cpp11::list alias(aliases[family]);
     if (is_bolditalic(face))
-      out = find_alias_field(family, alias, "bolditalic", field);
+      out = find_alias_field(alias, "bolditalic", field);
     else if (is_bold(face))
-      out = find_alias_field(family, alias, "bold", field);
+      out = find_alias_field(alias, "bold", field);
     else if (is_italic(face))
-      out = find_alias_field(family, alias, "italic", field);
+      out = find_alias_field(alias, "italic", field);
     else if (is_symbol(face))
-      out = find_alias_field(family, alias, "symbol", field);
+      out = find_alias_field(alias, "symbol", field);
     else
-      out = find_alias_field(family, alias, "plain", field);
+      out = find_alias_field(alias, "plain", field);
   }
   return out;
 }
 
-inline std::string find_system_alias(std::string family,
+inline std::string find_system_alias(const char* family,
                                      cpp11::list const& aliases) {
   std::string out;
-  if (aliases[family.c_str()] != R_NilValue) {
-    cpp11::sexp alias = aliases[family.c_str()];
+  if (aliases[family] != R_NilValue) {
+    cpp11::sexp alias = aliases[family];
     if (TYPEOF(alias) == STRSXP && Rf_length(alias) == 1)
       out = cpp11::as_cpp<std::string>(alias);
   }
   return out;
 }
 
-inline std::string fontname(const char* family_, int face,
-                            cpp11::list const& system_aliases,
-                            cpp11::list const& user_aliases, FontSettings& font) {
-  std::string family(family_);
-  if (face == 5)
-    family = "symbol";
-  else if (family == "")
-    family = "sans";
-
-  std::string alias = find_system_alias(family, system_aliases);
-  if (alias.empty()) {
-    alias = find_user_alias(family, user_aliases, face, "name");
-  }
-
-  if (!alias.empty()) {
-    return alias;
-  }
-
-  std::string family_name = "";
-  family_name.resize(100);
-  if (get_font_family(font.file, font.index, &family_name[0], 100)) {
-    family_name.erase(family_name.find('\0'));
-    return family_name;
-  }
-  return family;
-}
-
-inline std::string fontfile(const char* family_, int face,
-                            cpp11::list user_aliases) {
-  std::string family(family_);
-  if (face == 5)
-    family = "symbol";
-  else if (family == "")
-    family = "sans";
-
-  return find_user_alias(family, user_aliases, face, "file");
-}
-
-inline FontSettings get_font_file(const char* family, int face, cpp11::list user_aliases) {
+inline FontSettings get_font(const char* family, int face, cpp11::list user_aliases, cpp11::list system_aliases, std::string& family_name) {
   const char* fontfamily = family;
   if (is_symbol(face)) {
     fontfamily = "symbol";
   } else if (strcmp(family, "") == 0) {
     fontfamily = "sans";
   }
-  std::string alias = fontfile(fontfamily, face, user_aliases);
+  std::string alias = find_system_alias(fontfamily, system_aliases);
   if (!alias.empty()) {
+    fontfamily = alias.c_str();
+  }
+
+  std::string user_alias = find_user_alias(fontfamily, user_aliases, face, "file");
+  if (!user_alias.empty()) {
     FontSettings result = {};
-    std::strncpy(result.file, alias.c_str(), PATH_MAX);
+    std::strncpy(result.file, user_alias.c_str(), PATH_MAX);
     result.index = 0;
     result.n_features = 0;
+    family_name = find_user_alias(fontfamily, user_aliases, face, "name");
     return result;
   }
 
-  return locate_font_with_features(fontfamily, is_italic(face), is_bold(face));
+  FontSettings font = locate_font_with_features(fontfamily, is_italic(face), is_bold(face));
+  family_name.resize(100);
+  if (get_font_family(font.file, font.index, &family_name[0], 100)) {
+    family_name.erase(family_name.find('\0'));
+  }
+  return font;
 }
 
 inline void write_escaped(SvgStreamPtr stream, const char* text) {
@@ -552,9 +529,25 @@ void svg_metric_info(int c, const pGEcontext gc, double* ascent,
     c = -c;
   }
 
-  FontSettings font = get_font_file(gc->fontfamily, gc->fontface, svgd->user_aliases);
+  std::string family_name;
+  FontSettings font = get_font(
+    gc->fontfamily,
+    gc->fontface,
+    svgd->user_aliases,
+    svgd->system_aliases,
+    family_name
+  );
 
-  int error = glyph_metrics(c, font.file, font.index, gc->ps * gc->cex * svgd->scaling, 1e4, ascent, descent, width);
+  int error = glyph_metrics(
+    c,
+    font.file,
+    font.index,
+    gc->ps * gc->cex * svgd->scaling,
+    1e4,
+    ascent,
+    descent,
+    width
+  );
   if (error != 0) {
     *ascent = 0;
     *descent = 0;
@@ -629,6 +622,7 @@ void svg_new_page(const pGEcontext gc, pDevDesc dd) {
   svgd->clip_cache_next_id = 0;
   svgd->mask_cache_next_id = 0;
   svgd->pattern_cache_next_id = 0;
+  svgd->group_cache_next_id = 0;
 
   if (svgd->pageno > 0) {
     // close existing file, create a new one, and update stream
@@ -646,19 +640,24 @@ void svg_new_page(const pGEcontext gc, pDevDesc dd) {
     (*stream) << " xmlns:xlink='http://www.w3.org/1999/xlink'";
   }
 
-  if (!id.empty())
-    (*stream) << " id='" << id << "'";
-
-  (*stream) << " class='svglite'";
-
   (*stream) << " width='" << dd->right << "pt' height='" << dd->bottom << "pt'";
 
   (*stream) << " viewBox='0 0 " << dd->right << ' ' << dd->bottom << "'>\n";
 
+  (*stream) << "<g";
+
+  if (!id.empty())
+    (*stream) << " id='" << id << "'";
+
+  (*stream) << " class='svglite'>\n";
+
+
   // Setting default styles
   (*stream) << "<defs>\n";
   (*stream) << "  <style type='text/css'><![CDATA[\n";
-  (*stream) <<      svgd->webfonts;
+  if (!svgd->webfonts.empty()) {
+    (*stream) <<      svgd->webfonts << "\n";
+  }
   (*stream) << "    .svglite line, .svglite polyline, .svglite polygon, .svglite path, .svglite rect, .svglite circle {\n";
   (*stream) << "      fill: none;\n";
   (*stream) << "      stroke: #000000;\n";
@@ -668,6 +667,10 @@ void svg_new_page(const pGEcontext gc, pDevDesc dd) {
   (*stream) << "    }\n";
   (*stream) << "    .svglite text {\n";
   (*stream) << "      white-space: pre;\n";
+  (*stream) << "    }\n";
+  (*stream) << "    .svglite g.glyphgroup path {\n";
+  (*stream) << "      fill: inherit;\n";
+  (*stream) << "      stroke: none;\n";
   (*stream) << "    }\n";
   (*stream) << "  ]]></style>\n";
   (*stream) << "</defs>\n";
@@ -824,17 +827,30 @@ void svg_path(double *x, double *y,
 double svg_strwidth(const char *str, const pGEcontext gc, pDevDesc dd) {
   SVGDesc *svgd = (SVGDesc*) dd->deviceSpecific;
 
-  FontSettings font = get_font_file(gc->fontfamily, gc->fontface, svgd->user_aliases);
+  std::string family_name;
+  FontSettings font = get_font(
+    gc->fontfamily,
+    gc->fontface,
+    svgd->user_aliases,
+    svgd->system_aliases,
+    family_name
+  );
 
   double width = 0.0;
-
-  int error = string_width(str, font.file, font.index, gc->ps * gc->cex * svgd->scaling, 1e4, 1, &width);
+  int error = textshaping::string_width(
+    str,
+    font,
+    gc->ps * gc->cex * svgd->scaling,
+    72.0,
+    1,
+    &width
+  );
 
   if (error != 0) {
     width = 0.0;
   }
 
-  return width * 72. / 1e4;
+  return width;
 }
 
 void svg_rect(double x0, double y0, double x1, double y1,
@@ -894,13 +910,98 @@ void svg_circle(double x, double y, double r, const pGEcontext gc,
   stream->flush();
 }
 
+inline void mat_mult(double* t, double a, double b, double c, double d, double tx, double ty) {
+  double a_ = t[0] * a + t[2] * b;
+  double b_ = t[1] * a + t[3] * b;
+  double c_ = t[0] * c + t[2] * d;
+  double d_ = t[1] * c + t[3] * d;
+  t[4] = t[0] * tx + t[2] * ty + t[4];
+  t[5] = t[1] * tx + t[3] * ty + t[5];
+  t[0] = a_;
+  t[1] = b_;
+  t[2] = c_;
+  t[3] = d_;
+}
+
 void svg_text(double x, double y, const char *str, double rot,
               double hadj, const pGEcontext gc, pDevDesc dd) {
   SVGDesc *svgd = (SVGDesc*) dd->deviceSpecific;
-  if (!svgd->is_inited || svgd->is_recording_clip) {
+  if (!svgd->is_inited) {
     return;
   }
   SvgStreamPtr stream = svgd->stream;
+
+  std::string family_name;
+  FontSettings font = get_font(
+    gc->fontfamily,
+    gc->fontface,
+    svgd->user_aliases,
+    svgd->system_aliases,
+    family_name
+  );
+
+  if (svgd->is_recording_clip) {
+    std::vector<textshaping::Point> loc_buffer;
+    std::vector<uint32_t> id_buffer;
+    std::vector<int> cluster_buffer;
+    std::vector<unsigned int> font_buffer;
+    std::vector<FontSettings> fallback_buffer;
+    std::vector<double> scaling_buffer;
+    int err = textshaping::string_shape(
+      str,
+      font,
+      gc->ps * gc->cex * svgd->scaling,
+      72.0,
+      loc_buffer,
+      id_buffer,
+      cluster_buffer,
+      font_buffer,
+      fallback_buffer,
+      scaling_buffer
+    );
+    if (err == 0) {
+      double x_adj = 0;
+      if (hadj != 0) {
+        textshaping::string_width(
+          str,
+          font,
+          gc->ps * gc->cex * svgd->scaling,
+          72.0,
+          1,
+          &x_adj
+        );
+        x_adj *= -hadj;
+      }
+      // transformation to apply:
+      // Apply x_adj
+      // Reflect along x
+      // Apply rotation
+      // translate by x, y
+      double transform[6] = {1, 0, 0, 1, x, y};
+      if (rot != 0.0) {
+        rot = -6.2831853072 * rot / 360.0;
+        mat_mult(transform, std::cos(rot), std::sin(rot), -std::sin(rot), std::cos(rot), 0.0, 0.0);
+      }
+      if (x_adj != 0.0) {
+        mat_mult(transform, 1.0, 0.0, 0.0, 1.0, x_adj, 0.0);
+      }
+      mat_mult(transform, 1.0, 0.0, 0.0, -1.0, 0.0, 0.0);
+      for (size_t i = 0; i < loc_buffer.size(); ++i) {
+        mat_mult(transform, 1.0, 0.0, 0.0, 1.0, loc_buffer[i].x, loc_buffer[i].y);
+        bool no_outline = true;
+        (*stream) << get_glyph_path(
+          id_buffer[i],
+          transform,
+          fallback_buffer[font_buffer[i]].file,
+          fallback_buffer[font_buffer[i]].index,
+          gc->ps * gc->cex * svgd->scaling,
+          &no_outline
+        );
+        mat_mult(transform, 1.0, 0.0, 0.0, 1.0, -loc_buffer[i].x, -loc_buffer[i].y);
+      }
+    }
+    return;
+  }
 
   (*stream) << "<text";
 
@@ -924,8 +1025,7 @@ void svg_text(double x, double y, const char *str, double rot,
   write_style_begin(stream);
   write_style_fontsize(stream, fontsize * svgd->scaling, true);
 
-  FontSettings font_info = get_font_file(gc->fontfamily, gc->fontface, svgd->user_aliases);
-  int weight = get_font_weight(font_info.file, font_info.index);
+  int weight = get_font_weight(font.file, font.index);
 
   if (weight != 400) {
     if (weight == 700) {
@@ -939,20 +1039,19 @@ void svg_text(double x, double y, const char *str, double rot,
   if (!is_black(gc->col))
     write_style_col(stream, "fill", gc->col);
 
-  std::string font = fontname(gc->fontfamily, gc->fontface, svgd->system_aliases, svgd->user_aliases, font_info);
-  font = "\"" + font + "\"";
-  write_style_str(stream, "font-family", font.c_str());
+  family_name = "\"" + family_name + "\"";
+  write_style_str(stream, "font-family", family_name.c_str());
 
-  if (font_info.n_features > 0) {
+  if (font.n_features > 0) {
     (*stream) << " font-feature-settings: ";
-    for (int i = 0; i < font_info.n_features; ++i) {
+    for (int i = 0; i < font.n_features; ++i) {
       std::string feature = "";
-      feature += font_info.features[i].feature[0];
-      feature += font_info.features[i].feature[1];
-      feature += font_info.features[i].feature[2];
-      feature += font_info.features[i].feature[3];
-      (*stream) << "\"" << feature << "\" " << font_info.features[i].setting;
-      (*stream) << (i == font_info.n_features - 1 ? ";" : ",");
+      feature += font.features[i].feature[0];
+      feature += font.features[i].feature[1];
+      feature += font.features[i].feature[2];
+      feature += font.features[i].feature[3];
+      (*stream) << "\"" << feature << "\" " << font.features[i].setting;
+      (*stream) << (i == font.n_features - 1 ? ";" : ",");
     }
   }
 
@@ -1279,7 +1378,15 @@ SEXP svg_set_mask(SEXP path, SEXP ref, pDevDesc dd) {
     svgd->set_clipping(false);
 
     (*stream) << "<defs>\n";
+#if R_GE_version >= 15
+    if (R_GE_maskType(path) == R_GE_alphaMask) {
+        (*stream) << "  <mask id='mask-" << key << "' style='mask-type:alpha'>\n";
+    } else {
+        (*stream) << "  <mask id='mask-" << key << "' style='mask-type:luminance'>\n";
+    }
+#else
     (*stream) << "  <mask id='mask-" << key << "' style='mask-type:alpha'>\n";
+#endif
 
     SEXP R_fcall = PROTECT(Rf_lang1(path));
     Rf_eval(R_fcall, R_GlobalEnv);
@@ -1330,6 +1437,415 @@ void svg_release_mask(SEXP ref, pDevDesc dd) {
   }
 }
 
+// Adapts stubs from `grDevices/src/devPS.c` as recommended by Paul Murrell
+// They quietly do nothing (without even a warning) but their existence
+// seems to prevent segfaults when users try to use these new features
+inline std::string composite_operator(int op) {
+  std::string comp_op = "normal";
+#if R_GE_version >= 15
+  switch(op) {
+    case R_GE_compositeDestOver:
+    case R_GE_compositeDestIn:
+    case R_GE_compositeDestOut:
+    case R_GE_compositeIn:
+    case R_GE_compositeOut:
+    case R_GE_compositeAtop:
+    case R_GE_compositeXor:
+    case R_GE_compositeSource:
+    case R_GE_compositeDestAtop: cpp11::warning("Unsupported composition operator. Fallowing back to `over`");
+    case R_GE_compositeOver: comp_op = "normal"; break;
+    case R_GE_compositeDest: comp_op = "destination"; break; // We can fake this as a blend mode
+    case R_GE_compositeClear: comp_op = "clear"; break; // We can fake this as a blend mode
+    case R_GE_compositeAdd: comp_op = "plus-lighter"; break;
+    case R_GE_compositeSaturate: comp_op = "saturation"; break;
+    case R_GE_compositeMultiply: comp_op = "multiply"; break;
+    case R_GE_compositeScreen: comp_op = "screen"; break;
+    case R_GE_compositeOverlay: comp_op = "overlay"; break;
+    case R_GE_compositeDarken: comp_op = "darken"; break;
+    case R_GE_compositeLighten: comp_op = "lighten"; break;
+    case R_GE_compositeColorDodge: comp_op = "color-dodge"; break;
+    case R_GE_compositeColorBurn: comp_op = "color-burn"; break;
+    case R_GE_compositeHardLight: comp_op = "hard-light"; break;
+    case R_GE_compositeSoftLight: comp_op = "soft-light"; break;
+    case R_GE_compositeDifference: comp_op = "difference"; break;
+    case R_GE_compositeExclusion: comp_op = "exclusion"; break;
+  }
+#endif
+  return comp_op;
+}
+
+SEXP svg_define_group(SEXP source, int op, SEXP destination, pDevDesc dd) {
+  SVGDesc *svgd = (SVGDesc*) dd->deviceSpecific;
+  SvgStreamPtr stream = svgd->stream;
+
+  int key = -1;
+
+#if R_GE_version >= 15
+  key = svgd->group_cache_next_id;
+  svgd->group_cache_next_id++;
+
+  // Cache current clipping and break out of clipping group
+  bool was_clipping = svgd->is_clipping;
+  std::string old_clipid = svgd->clipid;
+  double clipx0 = svgd->clipx0;
+  double clipx1 = svgd->clipx1;
+  double clipy0 = svgd->clipy0;
+  double clipy1 = svgd->clipy1;
+  int temp_mask = svgd->current_mask;
+  svgd->current_mask = -1;
+  if (was_clipping) {
+    (*stream) << "</g>\n";
+  }
+  svgd->set_clipping(false);
+
+  (*stream) << "<defs>\n";
+
+  if (op == R_GE_compositeClear) {
+    source = R_NilValue;
+    destination = R_NilValue;
+    op = R_GE_compositeOver;
+  } else if (op == R_GE_compositeDest) {
+    source = R_NilValue;
+    op = R_GE_compositeOver;
+  }
+
+  bool is_simple = op == R_GE_compositeOver;
+
+  std::string blend_op = composite_operator(op);
+  (*stream) << "  <g id='group-" << key << (is_simple ? "'" : "' style='isolation:isolate;'") << ">\n";
+
+  if (destination != R_NilValue) {
+    SEXP R_fcall = PROTECT(Rf_lang1(destination));
+    Rf_eval(R_fcall, R_GlobalEnv);
+    UNPROTECT(1);
+
+    // Clipping may have happened above. End it before terminating mask
+    if (svgd->is_clipping) {
+      (*stream) << "</g>\n";
+    }
+    svgd->set_clipping(false);
+  }
+
+  if (source != R_NilValue) {
+    if (!is_simple) {
+      (*stream) << "  <g style='mix-blend-mode:" << blend_op << ";'>\n";
+    }
+    SEXP R_fcall1 = PROTECT(Rf_lang1(source));
+    Rf_eval(R_fcall1, R_GlobalEnv);
+    UNPROTECT(1);
+    // Clipping may have happened above. End it before terminating mask
+    if (svgd->is_clipping) {
+      (*stream) << "</g>\n";
+    }
+    svgd->set_clipping(false);
+
+    if (!is_simple) {
+      (*stream) << "  </g>\n";
+    }
+  }
+
+  (*stream) << "  </g>\n";
+
+  (*stream) << "</defs>\n";
+
+  // Resume old clipping if it was happening
+  if (was_clipping) {
+    (*stream) << "<g";
+    svgd->clipid = old_clipid;
+    svgd->clipx0 = clipx0;
+    svgd->clipx1 = clipx1;
+    svgd->clipy0 = clipy0;
+    svgd->clipy1 = clipy1;
+    write_attr_clip(stream, svgd->clipid);
+    (*stream) << ">\n";
+    svgd->set_clipping(true);
+  }
+  svgd->current_mask = temp_mask;
+
+  svgd->group_cache.insert(key);
+#endif
+
+  return Rf_ScalarInteger(key);
+}
+
+void svg_use_group(SEXP ref, SEXP trans, pDevDesc dd) {
+  SVGDesc *svgd = (SVGDesc*) dd->deviceSpecific;
+  SvgStreamPtr stream = svgd->stream;
+  if (Rf_isNull(ref)) {
+    return;
+  }
+  int key = INTEGER(ref)[0];
+  if (key < 0) {
+    cpp11::warning("Unknown group, %i", key);
+    return;
+  }
+  auto it = svgd->group_cache.find(key);
+  if (it == svgd->group_cache.end()) {
+    cpp11::warning("Unknown group, %i", key);
+    return;
+  }
+
+  bool has_transform = trans != R_NilValue;
+  if (has_transform) {
+    (*stream) << "  <g style='transform:matrix(" <<
+      REAL(trans)[0] << "," <<
+      REAL(trans)[3] << "," <<
+      REAL(trans)[1] << "," <<
+      REAL(trans)[4] << "," <<
+      REAL(trans)[2] << "," <<
+      REAL(trans)[5] << ");'>\n";
+  }
+
+  (*stream) << "  <use href='#group-" << key << "' />\n";
+
+  if (has_transform) {
+    (*stream) << "  </g>\n";
+  }
+
+  return;
+}
+
+void svg_release_group(SEXP ref, pDevDesc dd) {
+  SVGDesc *svgd = (SVGDesc*) dd->deviceSpecific;
+  if (Rf_isNull(ref)) {
+    svgd->group_cache.clear();
+    return;
+  }
+
+  unsigned int key = INTEGER(ref)[0];
+
+  auto it = svgd->group_cache.find(key);
+  // Check if path exists
+  if (it != svgd->group_cache.end()) {
+    svgd->group_cache.erase(it);
+  }
+}
+
+void svg_stroke(SEXP path, const pGEcontext gc, pDevDesc dd) {
+  if (Rf_isNull(path)) {
+    return;
+  }
+  SVGDesc *svgd = (SVGDesc*) dd->deviceSpecific;
+
+  SvgStreamPtr stream = svgd->stream;
+
+  // Create path data
+  if (!svgd->is_recording_clip) {
+    (*stream) << "<path d='";
+  }
+
+  // Reusing the clip flag for this because it essentially does the same
+  bool tmp_rec_clip = svgd->is_recording_clip;
+  svgd->is_recording_clip = true;
+
+  SEXP R_fcall = PROTECT(Rf_lang1(path));
+  Rf_eval(R_fcall, R_GlobalEnv);
+  UNPROTECT(1);
+
+  svgd->is_recording_clip = tmp_rec_clip;
+
+  if (svgd->is_recording_clip) {
+    return;
+  }
+
+  (*stream) << "'";
+
+  write_attr_mask(stream, svgd->current_mask);
+  write_style_begin(stream);
+  write_style_linetype(stream, gc, svgd->scaling, true);
+  write_style_end(stream);
+
+  (*stream) << " />\n";
+  stream->flush();
+}
+
+void svg_fill(SEXP path, int rule, const pGEcontext gc, pDevDesc dd) {
+  if (Rf_isNull(path)) {
+    return;
+  }
+  SVGDesc *svgd = (SVGDesc*) dd->deviceSpecific;
+
+  SvgStreamPtr stream = svgd->stream;
+
+  // Create path data
+  if (!svgd->is_recording_clip) {
+    (*stream) << "<path d='";
+  }
+
+  // Reusing the clip flag for this because it essentially does the same
+  bool tmp_rec_clip = svgd->is_recording_clip;
+  svgd->is_recording_clip = true;
+
+  SEXP R_fcall = PROTECT(Rf_lang1(path));
+  Rf_eval(R_fcall, R_GlobalEnv);
+  UNPROTECT(1);
+
+  svgd->is_recording_clip = tmp_rec_clip;
+
+  if (svgd->is_recording_clip) {
+    return;
+  }
+
+  (*stream) << "'";
+
+  write_attr_mask(stream, svgd->current_mask);
+  write_style_begin(stream);
+#if R_GE_version >= 15
+  // Specify fill rule
+  write_style_str(stream, "fill-rule", rule == R_GE_nonZeroWindingRule ? "nonzero" : "evenodd", true);
+#endif
+  write_style_fill(stream, gc);
+  write_style_str(stream, "stroke", "none");
+  write_style_end(stream);
+
+  (*stream) << " />\n";
+  stream->flush();
+}
+
+void svg_fill_stroke(SEXP path, int rule, const pGEcontext gc, pDevDesc dd) {
+  if (Rf_isNull(path)) {
+    return;
+  }
+  SVGDesc *svgd = (SVGDesc*) dd->deviceSpecific;
+
+  SvgStreamPtr stream = svgd->stream;
+
+  // Create path data
+  if (!svgd->is_recording_clip) {
+    (*stream) << "<path d='";
+  }
+
+  // Reusing the clip flag for this because it essentially does the same
+  bool tmp_rec_clip = svgd->is_recording_clip;
+  svgd->is_recording_clip = true;
+
+  SEXP R_fcall = PROTECT(Rf_lang1(path));
+  Rf_eval(R_fcall, R_GlobalEnv);
+  UNPROTECT(1);
+
+  svgd->is_recording_clip = tmp_rec_clip;
+
+  if (svgd->is_recording_clip) {
+    return;
+  }
+
+  (*stream) << "'";
+
+  write_attr_mask(stream, svgd->current_mask);
+  write_style_begin(stream);
+#if R_GE_version >= 15
+  // Specify fill rule
+  write_style_str(stream, "fill-rule", rule == R_GE_nonZeroWindingRule ? "nonzero" : "evenodd", true);
+#endif
+  write_style_fill(stream, gc);
+  write_style_linetype(stream, gc, svgd->scaling);
+  write_style_end(stream);
+
+  (*stream) << " />\n";
+  stream->flush();
+}
+
+void svg_glyph(int n, int *glyphs, double *x, double *y, SEXP font, double size, int colour, double rot, pDevDesc dd) {
+#if R_GE_version >= 16
+
+  SVGDesc *svgd = (SVGDesc*) dd->deviceSpecific;
+  double cos_rot = 1.0;
+  double sin_rot = 0.0;
+  if (rot != 0.0) {
+    double rot_rad = -6.2831853072 * rot / 360.0;
+    cos_rot = std::cos(rot_rad);
+    sin_rot = std::sin(rot_rad);
+  }
+  SvgStreamPtr stream = svgd->stream;
+  size *= svgd->scaling;
+  bool no_outline = false;
+
+  if (!svgd->is_recording_clip) {
+    (*stream) << "<g class='glyphgroup'";
+    write_attr_mask(stream, svgd->current_mask);
+    write_style_begin(stream);
+    write_style_col(stream, "fill", colour);
+    write_style_end(stream);
+
+    (*stream) << ">\n";
+  }
+
+
+  for (int i = 0; i < n; ++i) {
+    // Create path data
+    double transform[6] = {1.0, 0.0, 0.0, 1.0, x[i], y[i]};
+    if (rot != 0) {
+      mat_mult(transform, cos_rot, sin_rot, -sin_rot, cos_rot, 0.0, 0.0);
+    }
+    mat_mult(transform, 1.0, 0.0, 0.0, -1.0, 0.0, 0.0);
+    std::string p = get_glyph_path(
+      glyphs[i],
+      transform,
+      R_GE_glyphFontFile(font),
+      R_GE_glyphFontIndex(font),
+      size,
+      &no_outline
+    );
+
+    if (no_outline) {
+      if (svgd->is_recording_clip) continue;
+
+      SEXP raster = PROTECT(get_glyph_raster(
+        glyphs[i],
+        R_GE_glyphFontFile(font),
+        R_GE_glyphFontIndex(font),
+        size,
+        300.0,
+        colour
+      ));
+
+      if (!Rf_isNull(raster)) {
+        SEXP r_size = PROTECT(Rf_getAttrib(raster, Rf_mkString("size")));
+        SEXP offset = PROTECT(Rf_getAttrib(raster, Rf_mkString("offset")));
+        double x_off = cos_rot * REAL(offset)[1] - sin_rot * (REAL(r_size)[0] - REAL(offset)[0]);
+        double y_off = sin_rot * REAL(offset)[1] + cos_rot * (REAL(r_size)[0] - REAL(offset)[0]);
+        svg_raster(
+          (unsigned int*) (INTEGER(raster)),
+          Rf_ncols(raster),
+          Rf_nrows(raster),
+          x[i] + x_off,
+          y[i] + y_off,
+          REAL(r_size)[1],
+          REAL(r_size)[0],
+          rot,
+          (Rboolean) true,
+          nullptr,
+          dd
+        );
+        UNPROTECT(2);
+      }
+      UNPROTECT(1);
+    } else {
+      if (p.empty()) continue;
+
+      if (!svgd->is_recording_clip) {
+        (*stream) << "<path d='";
+      }
+
+      (*stream) << p;
+
+      if (svgd->is_recording_clip) {
+        return;
+      }
+      // Finish path data
+      (*stream) << "' />\n";
+    }
+  }
+
+  if (!svgd->is_recording_clip) {
+    (*stream) << "</g>\n";
+  }
+
+  stream->flush();
+
+#endif
+}
+
 SEXP svg_capabilities(SEXP capabilities) {
 #if R_GE_version >= 15
   // Pattern support
@@ -1351,15 +1867,38 @@ SEXP svg_capabilities(SEXP capabilities) {
   UNPROTECT(1);
 
   // Group composition
-  SET_VECTOR_ELT(capabilities, R_GE_capability_compositing, Rf_ScalarInteger(0));
+  SEXP compositing = PROTECT(Rf_allocVector(INTSXP, 16));
+  INTEGER(compositing)[0] = R_GE_compositeMultiply;
+  INTEGER(compositing)[1] = R_GE_compositeScreen;
+  INTEGER(compositing)[2] = R_GE_compositeOverlay;
+  INTEGER(compositing)[3] = R_GE_compositeDarken;
+  INTEGER(compositing)[4] = R_GE_compositeLighten;
+  INTEGER(compositing)[5] = R_GE_compositeColorDodge;
+  INTEGER(compositing)[6] = R_GE_compositeColorBurn;
+  INTEGER(compositing)[7] = R_GE_compositeHardLight;
+  INTEGER(compositing)[8] = R_GE_compositeSoftLight;
+  INTEGER(compositing)[9] = R_GE_compositeDifference;
+  INTEGER(compositing)[10] = R_GE_compositeExclusion;
+  INTEGER(compositing)[11] = R_GE_compositeAdd;
+  INTEGER(compositing)[12] = R_GE_compositeSaturate;
+  INTEGER(compositing)[13] = R_GE_compositeOver;
+  INTEGER(compositing)[14] = R_GE_compositeClear;
+  INTEGER(compositing)[15] = R_GE_compositeDest;
+  SET_VECTOR_ELT(capabilities, R_GE_capability_compositing, compositing);
+  UNPROTECT(1);
 
   // Group transformation
-  SET_VECTOR_ELT(capabilities, R_GE_capability_transformations, Rf_ScalarInteger(0));
+  SET_VECTOR_ELT(capabilities, R_GE_capability_transformations, Rf_ScalarInteger(1));
 
   // Path stroking and filling
-  SET_VECTOR_ELT(capabilities, R_GE_capability_paths, Rf_ScalarInteger(0));
-
+  SET_VECTOR_ELT(capabilities, R_GE_capability_paths, Rf_ScalarInteger(1));
 #endif
+
+#if R_GE_version >= 16
+  // Glyph rendering
+  SET_VECTOR_ELT(capabilities, R_GE_capability_glyphs, Rf_ScalarInteger(1));
+#endif
+
   return capabilities;
 }
 
@@ -1435,7 +1974,16 @@ pDevDesc svg_driver_new(SvgStreamPtr stream, int bg, double width,
 
   // Capabilities
 #if R_GE_version >= 15
+  dd->defineGroup = svg_define_group;
+  dd->useGroup = svg_use_group;
+  dd->releaseGroup = svg_release_group;
+  dd->stroke = svg_stroke;
+  dd->fill = svg_fill;
+  dd->fillStroke = svg_fill_stroke;
   dd->capabilities = svg_capabilities;
+#endif
+#if R_GE_version >= 16
+  dd->glyph = svg_glyph;
 #endif
   dd->canClip = TRUE;
 #if R_GE_version >= 14
@@ -1445,10 +1993,11 @@ pDevDesc svg_driver_new(SvgStreamPtr stream, int bg, double width,
   dd->canChangeGamma = FALSE;
   dd->displayListOn = FALSE;
   dd->haveTransparency = 2;
-  dd->haveTransparentBg = 2;
+  dd->haveRaster = 2;
+  dd->haveTransparentBg = 3; /* background can be semi-transparent */
 
 #if R_GE_version >= 13
-  dd->deviceVersion = 15; //R_GE_group;
+  dd->deviceVersion = 16; //R_GE_glyph;
 #endif
 
   dd->deviceSpecific = new SVGDesc(stream, standalone, aliases, webfonts, file,

@@ -6,10 +6,10 @@
 <!-- badges: start -->
 
 [![R-CMD-check](https://github.com/r-lib/svglite/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/r-lib/svglite/actions/workflows/R-CMD-check.yaml)
-[![Codecov test
-coverage](https://codecov.io/gh/r-lib/svglite/branch/main/graph/badge.svg)](https://app.codecov.io/gh/r-lib/svglite?branch=main)
 [![CRAN Status
 Badge](http://www.r-pkg.org/badges/version/svglite)](https://cran.r-project.org/package=svglite)
+[![Codecov test
+coverage](https://codecov.io/gh/r-lib/svglite/graph/badge.svg)](https://app.codecov.io/gh/r-lib/svglite)
 <!-- badges: end -->
 
 svglite is a graphics device that produces clean svg output, suitable
@@ -62,8 +62,8 @@ bench::mark(svglite_test(), svg_test(), min_iterations = 250, check = FALSE)
 #> # A tibble: 2 × 6
 #>   expression          min   median `itr/sec` mem_alloc `gc/sec`
 #>   <bch:expr>     <bch:tm> <bch:tm>     <dbl> <bch:byt>    <dbl>
-#> 1 svglite_test()   2.08ms   2.23ms      438.     691KB    7.13 
-#> 2 svg_test()       6.07ms   6.26ms      159.     179KB    0.638
+#> 1 svglite_test()   2.64ms   2.73ms      362.     627KB    2.92 
+#> 2 svg_test()       6.11ms   6.26ms      159.     224KB    0.638
 ```
 
 ### File size
@@ -78,7 +78,7 @@ fs::file_size(tmp1)
 
 # svg
 fs::file_size(tmp2)
-#> 321K
+#> 327K
 ```
 
 In both cases, compressing to make `.svgz` (gzipped svg) is worthwhile.
@@ -93,7 +93,7 @@ invisible(dev.off())
 
 # svglite - svgz
 fs::file_size(tmp3)
-#> 9.42K
+#> 9.46K
 ```
 
 ### Editability
@@ -113,12 +113,39 @@ such as Inkscape or Illustrator and polish the output if you so choose.
 svglite uses systemfonts for font discovery which means that all
 installed fonts on your system is available to use. The systemfonts
 foundation means that fonts registered with `register_font()` or
-`register_variant()` will also be available. If any of these contains
+`register_variant()` will also be available, as will fonts added with
+`add_fonts()` and `require_font()`. If any of these contains
 non-standard weights or OpenType features (e.g. ligatures or tabular
 numerics) this will be correctly encoded in the style block. systemfonts
 also allows you to embed webfont `@imports` in your file to ensure that
 the file looks as expected even on systems without the used font
-installed.
+installed. Using `systemfonts::fonts_as_import()` you can generate these
+imports automatically, optionally embedding the font data directly in
+the file.
+
+## Building svglite
+
+*This section is only relevant for building svglite from scratch, as
+opposed to installing from a pre-built package on CRAN.*
+
+Building svglite requires the system dependency libpng. As svglite
+doesn’t have any build-time configuration, your R configuration must
+point to libpng’s `include` and `lib` folders.
+
+For instance on macOS, install libpng with:
+
+``` sh
+brew install libpng
+```
+
+And make sure your `~/.R/Makevars` knows about Homebrew’s `include` and
+`lib` folders where libpng should now be installed. On arm64 hardware,
+this would be:
+
+``` mk
+CPPFLAGS += -I/opt/homebrew/include
+LDFLAGS += -L/opt/homebrew/lib
+```
 
 ## Code of Conduct
 

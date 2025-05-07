@@ -1,8 +1,8 @@
-#ifndef __SVG_STREAM__
-#define __SVG_STREAM__
+#pragma once
 
 #include <fstream>
 #include <sstream>
+#include <iomanip>
 #include <cpp11/protect.hpp>
 #include <cpp11/environment.hpp>
 #include <cpp11/strings.hpp>
@@ -66,13 +66,6 @@ SvgStream& operator<<(SvgStream& object, const T& data) {
   object.write(data);
   return object;
 }
-template <>
-SvgStream& operator<<(SvgStream& object, const double& data) {
-  // Make sure negative zeros are converted to positive zero for
-  // reproducibility of SVGs
-  object.write(dbl_format(data));
-  return object;
-}
 
 class SvgStreamFile : public SvgStream {
   std::ofstream stream_;
@@ -126,13 +119,19 @@ public:
     if (!always_valid) {
       return;
     }
-
-    stream_ << "</g>\n</svg>";
 #ifdef _WIN32
-    stream_.seekp(-12, std::ios_base::cur);
+    int offset = -12;
 #else
-    stream_.seekp(-11, std::ios_base::cur);
+    int offset = -11;
 #endif
+
+    if (is_clipping()) {
+      // We don't do newline here just to avoid having to deal with windows
+      stream_ << "</g>";
+      offset -= 4;
+    }
+    stream_ << "</g>\n</svg>";
+    stream_.seekp(offset, std::ios_base::cur);
   }
 
   void finish(bool close) {
@@ -141,7 +140,7 @@ public:
     if (is_clipping()) {
       stream_ << "</g>\n";
     }
-    stream_ << "</svg>\n";
+    stream_ << "</g>\n</svg>\n";
     stream_.flush();
     clear_clip_ids();
 
@@ -191,7 +190,7 @@ public:
       if (is_clipping()) {
         svgstr.append("</g>\n");
       }
-      svgstr.append("</svg>");
+      svgstr.append("</g>\n</svg>");
     }
     if (env_.exists("svg_string")) {
       cpp11::writable::strings str(env_["svg_string"]);
@@ -211,6 +210,3 @@ public:
     return &stream_;
   }
 };
-
-
-#endif

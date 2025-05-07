@@ -19,26 +19,17 @@
 #' @param pointsize Default point size.
 #' @param standalone Produce a standalone svg file? If \code{FALSE}, omits
 #'   xml header and default namespace.
-#' @param system_fonts `r lifecycle::badge('superseded')` *Consider using
-#'   [systemfonts::register_font()] instead*. Named list of font
-#'   names to be aliased with fonts installed on your system. If unspecified,
-#'   the R default families \code{sans}, \code{serif}, \code{mono} and
-#'   \code{symbol} are aliased to the family returned by
-#'   \code{\link[systemfonts]{font_info}()}.
-#' @param user_fonts `r lifecycle::badge('superseded')` *Consider using
-#'   [systemfonts::register_font()] instead*. Named list of fonts to
-#'   be aliased with font files provided by the user rather than fonts properly
-#'   installed on the system. The aliases can be fonts from the fontquiver
-#'   package, strings containing a path to a font file, or a list containing
-#'   \code{name} and \code{file} elements with \code{name} indicating
-#'   the font alias in the SVG output and \code{file} the path to a
-#'   font file.
 #' @param web_fonts A list containing web fonts to use in the SVG. The fonts
 #'   will still need to be available locally on the computer running the code,
 #'   but viewers of the final SVG will not need the font if specified as a web
 #'   font. Web fonts can either be specified using [font_face()] or given as a
 #'   single string in which case they are taken to be URL's for an `@import`
-#'   directive to e.g. Google Fonts.
+#'   directive to e.g. Google Fonts. For the latter, you can use
+#'   [fonts_as_import()] to automatically generate the string, optionally
+#'   embedding the font data in it. If the passed in string is not in the form
+#'   of a URL or `@import` statement then it is considered a font family name
+#'   and [fonts_as_import()] will be called to convert it to an import
+#'   automatically, using the default arguments.
 #' @param id A character vector of ids to assign to the generated SVG's. If
 #'   creating more SVG files than supplied ids the exceeding SVG's will not have
 #'   an id tag and a warning will be thrown.
@@ -59,6 +50,20 @@
 #'   hit (>50% additional rendering time) so this should only be set to `TRUE`
 #'   if the file is being parsed while it is still being written to.
 #' @param file Identical to `filename`. Provided for backward compatibility.
+#' @param system_fonts `r lifecycle::badge('superseded')` *Consider using
+#'   [systemfonts::register_font()] instead*. Named list of font
+#'   names to be aliased with fonts installed on your system. If unspecified,
+#'   the R default families \code{sans}, \code{serif}, \code{mono} and
+#'   \code{symbol} are aliased to the family returned by
+#'   \code{\link[systemfonts]{font_info}()}.
+#' @param user_fonts `r lifecycle::badge('superseded')` *Consider using
+#'   [systemfonts::register_font()] instead*. Named list of fonts to
+#'   be aliased with font files provided by the user rather than fonts properly
+#'   installed on the system. The aliases can be fonts from the fontquiver
+#'   package, strings containing a path to a font file, or a list containing
+#'   \code{name} and \code{file} elements with \code{name} indicating
+#'   the font alias in the SVG output and \code{file} the path to a
+#'   font file.
 #' @references \emph{W3C Scalable Vector Graphics (SVG)}:
 #'   \url{https://www.w3.org/Graphics/SVG/}
 #' @author This driver was written by T Jake Luciani
@@ -76,15 +81,29 @@
 #' @useDynLib svglite, .registration = TRUE
 #' @importFrom systemfonts match_font
 #' @export
-svglite <- function(filename = "Rplot%03d.svg", width = 10, height = 8,
-                    bg = "white", pointsize = 12, standalone = TRUE,
-                    system_fonts = list(), user_fonts = list(), web_fonts = list(), id = NULL,
-                    fix_text_size = TRUE, scaling = 1, always_valid = FALSE, file) {
+svglite <- function(
+  filename = "Rplot%03d.svg",
+  width = 10,
+  height = 8,
+  bg = "white",
+  pointsize = 12,
+  standalone = TRUE,
+  web_fonts = list(),
+  id = NULL,
+  fix_text_size = TRUE,
+  scaling = 1,
+  always_valid = FALSE,
+  file,
+  system_fonts = list(),
+  user_fonts = list()
+) {
   if (!missing(file)) {
     filename <- file
   }
   if (invalid_filename(filename)) {
-    stop("invalid 'file': ", filename)
+    cli::cli_abort(
+      "{.arg filename} does not provide a valid name ({.val {filename}}): "
+    )
   }
   aliases <- validate_aliases(system_fonts, user_fonts)
   web_fonts <- validate_web_fonts(web_fonts)
@@ -92,7 +111,20 @@ svglite <- function(filename = "Rplot%03d.svg", width = 10, height = 8,
     id <- character(0)
   }
   id <- as.character(id)
-  invisible(svglite_(filename, bg, width, height, pointsize, standalone, aliases, web_fonts, id, fix_text_size, scaling, always_valid))
+  invisible(svglite_(
+    filename,
+    bg,
+    width,
+    height,
+    pointsize,
+    standalone,
+    aliases,
+    web_fonts,
+    id,
+    fix_text_size,
+    scaling,
+    always_valid
+  ))
 }
 
 #' Access current SVG as a string.
@@ -121,11 +153,19 @@ svglite <- function(filename = "Rplot%03d.svg", width = 10, height = 8,
 #' dev.off()
 #' @inheritParams svglite
 #' @export
-svgstring <- function(width = 10, height = 8, bg = "white",
-                      pointsize = 12, standalone = TRUE,
-                      system_fonts = list(), user_fonts = list(),
-                      web_fonts = list(), id = NULL, fix_text_size = TRUE,
-                      scaling = 1) {
+svgstring <- function(
+  width = 10,
+  height = 8,
+  bg = "white",
+  pointsize = 12,
+  standalone = TRUE,
+  web_fonts = list(),
+  id = NULL,
+  fix_text_size = TRUE,
+  scaling = 1,
+  system_fonts = list(),
+  user_fonts = list()
+) {
   aliases <- validate_aliases(system_fonts, user_fonts)
   web_fonts <- validate_web_fonts(web_fonts)
   if (is.null(id)) {
@@ -134,10 +174,18 @@ svgstring <- function(width = 10, height = 8, bg = "white",
   id <- as.character(id)
 
   env <- new.env(parent = emptyenv())
-  string_src <- svgstring_(env,
-    width = width, height = height, bg = bg,
-    pointsize = pointsize, standalone = standalone, aliases = aliases,
-    webfonts = web_fonts, id = id, fix_text_size, scaling
+  string_src <- svgstring_(
+    env,
+    width = width,
+    height = height,
+    bg = bg,
+    pointsize = pointsize,
+    standalone = standalone,
+    aliases = aliases,
+    webfonts = web_fonts,
+    id = id,
+    fix_text_size,
+    scaling
   )
 
   function() {
