@@ -1,6 +1,6 @@
 Package: svglite
 Title: An 'SVG' Graphics Device
-Version: 2.2.0
+Version: 2.2.1
 Authors@R: c(
     person("Hadley", "Wickham", , "hadley@posit.co", role = "aut"),
     person("Lionel", "Henry", , "lionel@posit.co", role = "aut"),
@@ -40,7 +40,7 @@ Encoding: UTF-8
 RoxygenNote: 7.3.2
 SystemRequirements: libpng
 NeedsCompilation: yes
-Packaged: 2025-05-05 08:34:04 UTC; thomas
+Packaged: 2025-05-12 14:44:20 UTC; thomas
 Author: Hadley Wickham [aut],
   Lionel Henry [aut],
   Thomas Lin Pedersen [cre, aut] (ORCID:
@@ -55,4 +55,4 @@ Author: Hadley Wickham [aut],
   Posit Software, PBC [cph, fnd] (ROR: <https://ror.org/03wc8by49>)
 Maintainer: Thomas Lin Pedersen <thomas.pedersen@posit.co>
 Repository: CRAN
-Date/Publication: 2025-05-07 12:20:02 UTC
+Date/Publication: 2025-05-12 18:50:02 UTC

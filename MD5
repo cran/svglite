@@ -1,6 +1,6 @@
-3d770ef2e4f3883d4877f948b0c49b86 *DESCRIPTION
+1428c5075a400cad678bbe40c1561eaa *DESCRIPTION
 5ef37ad5ca67e690e519f8b583b14e27 *NAMESPACE
-8eec725b3f873c7e5eadb9d1455902b7 *NEWS.md
+a31347da9401f5e3e14c5b4679b99595 *NEWS.md
 98c3de1cec3e728caefbc3d611b5c369 *R/SVG.R
 1cffcfacb96b32f07c1975b43ff35087 *R/aaa.R
 8f75c1ad19b049d9b7d071aad81d88d7 *R/cpp11.R
@@ -14,9 +14,9 @@ a4c9d4655b1394996822348943390491 *README.md
 d6cdc01cb3694ee51497bf0310602f44 *build/vignette.rds
 83eee3b618334c2d1fdbcf8b32bcd11a *inst/doc/fonts.R
 7dfd0c1a87a87b83738a3a46f0aa0c87 *inst/doc/fonts.Rmd
-dea7649b144f86ef2b0b6af5080c8f22 *inst/doc/fonts.html
+af9072909d88dc484ecafd8bc58aa40b *inst/doc/fonts.html
 248976c59504edd8120c60d2f45e7d65 *inst/doc/scaling.Rmd
-4ed9a03dba8b8e8a15f07d069ad67c8c *inst/doc/scaling.html
+b8f8987da76e85a8a04f80b30a506a87 *inst/doc/scaling.html
 255de159ca5640aed549615c3e3a8f35 *man/add_web_fonts.Rd
 ac04add3779e55e62e1cde3c1fc239c3 *man/create_svgz.Rd
 e5100e690d04ed6c249069e405950ad8 *man/editSVG.Rd
@@ -43,7 +43,7 @@ d21ef75f59e47f821779428a21fd6e8a *man/reexports.Rd
 5f05efe55b70273f72fc1174e7da90c4 *src/Makevars.ucrt
 b48a6378658af3ebc24c61d69c272a9c *src/Makevars.win
 c8e7bef2bdcd4b8c0bcbc5e07a1bf0f0 *src/SvgStream.cpp
-556b0d5ed04d54477673c3510fea837b *src/SvgStream.h
+06b159396229b1da22722736d90d8f0f *src/SvgStream.h
 e068a75315145a7eb6911dbb44863a3b *src/cpp11.cpp
 fc599de71b35fc755f801f970f1770be *src/devSVG.cpp
 3ca7236a09d486462e6c63c161c5d489 *src/svglite_types.h

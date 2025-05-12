@@ -1,3 +1,7 @@
+# svglite 2.2.1
+
+* Fix a compilation issue on Fedora
+
 # svglite 2.2.0
 
 * Added support for luminance masking (#174)

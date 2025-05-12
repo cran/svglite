@@ -11,7 +11,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 
 
-<meta name="date" content="2025-05-05" />
+<meta name="date" content="2025-05-12" />
 
 <title>Specifying fonts</title>
 
@@ -338,7 +338,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 
 <h1 class="title toc-ignore">Specifying fonts</h1>
-<h4 class="date">2025-05-05</h4>
+<h4 class="date">2025-05-12</h4>
 
 
 
@@ -508,14 +508,19 @@ systemfonts:</p>
 <span id="cb6-13"><a href="#cb6-13" tabindex="-1"></a><span class="co">#&gt; $features</span></span>
 <span id="cb6-14"><a href="#cb6-14" tabindex="-1"></a><span class="co">#&gt; integer(0)</span></span>
 <span id="cb6-15"><a href="#cb6-15" tabindex="-1"></a>systemfonts<span class="sc">::</span><span class="fu">font_info</span>(<span class="st">&quot;Helvetica&quot;</span>, <span class="at">bold =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb6-16"><a href="#cb6-16" tabindex="-1"></a><span class="co">#&gt; # A data frame: 1 × 24</span></span>
-<span id="cb6-17"><a href="#cb6-17" tabindex="-1"></a><span class="co">#&gt;   path      index family style italic bold  monospace weight width kerning color</span></span>
-<span id="cb6-18"><a href="#cb6-18" tabindex="-1"></a><span class="co">#&gt;   &lt;chr&gt;     &lt;int&gt; &lt;chr&gt;  &lt;chr&gt; &lt;lgl&gt;  &lt;lgl&gt; &lt;lgl&gt;     &lt;ord&gt;  &lt;ord&gt; &lt;lgl&gt;   &lt;lgl&gt;</span></span>
-<span id="cb6-19"><a href="#cb6-19" tabindex="-1"></a><span class="co">#&gt; 1 /System/…     1 Helve… Bold  FALSE  TRUE  FALSE     bold   norm… FALSE   FALSE</span></span>
-<span id="cb6-20"><a href="#cb6-20" tabindex="-1"></a><span class="co">#&gt; # ℹ 13 more variables: scalable &lt;lgl&gt;, vertical &lt;lgl&gt;, n_glyphs &lt;int&gt;,</span></span>
-<span id="cb6-21"><a href="#cb6-21" tabindex="-1"></a><span class="co">#&gt; #   n_sizes &lt;int&gt;, n_charmaps &lt;int&gt;, bbox &lt;list&gt;, max_ascend &lt;dbl&gt;,</span></span>
-<span id="cb6-22"><a href="#cb6-22" tabindex="-1"></a><span class="co">#&gt; #   max_descend &lt;dbl&gt;, max_advance_width &lt;dbl&gt;, max_advance_height &lt;dbl&gt;,</span></span>
-<span id="cb6-23"><a href="#cb6-23" tabindex="-1"></a><span class="co">#&gt; #   lineheight &lt;dbl&gt;, underline_pos &lt;dbl&gt;, underline_size &lt;dbl&gt;</span></span></code></pre></div>
+<span id="cb6-16"><a href="#cb6-16" tabindex="-1"></a><span class="co">#&gt; Warning: The `bold` argument of `font_info()` is deprecated as of systemfonts 1.2.4.</span></span>
+<span id="cb6-17"><a href="#cb6-17" tabindex="-1"></a><span class="co">#&gt; ℹ Please use the `weight` argument instead.</span></span>
+<span id="cb6-18"><a href="#cb6-18" tabindex="-1"></a><span class="co">#&gt; This warning is displayed once every 8 hours.</span></span>
+<span id="cb6-19"><a href="#cb6-19" tabindex="-1"></a><span class="co">#&gt; Call `lifecycle::last_lifecycle_warnings()` to see where this warning was</span></span>
+<span id="cb6-20"><a href="#cb6-20" tabindex="-1"></a><span class="co">#&gt; generated.</span></span>
+<span id="cb6-21"><a href="#cb6-21" tabindex="-1"></a><span class="co">#&gt; # A data frame: 1 × 24</span></span>
+<span id="cb6-22"><a href="#cb6-22" tabindex="-1"></a><span class="co">#&gt;   path      index family style italic bold  monospace weight width kerning color</span></span>
+<span id="cb6-23"><a href="#cb6-23" tabindex="-1"></a><span class="co">#&gt;   &lt;chr&gt;     &lt;int&gt; &lt;chr&gt;  &lt;chr&gt; &lt;lgl&gt;  &lt;lgl&gt; &lt;lgl&gt;     &lt;ord&gt;  &lt;ord&gt; &lt;lgl&gt;   &lt;lgl&gt;</span></span>
+<span id="cb6-24"><a href="#cb6-24" tabindex="-1"></a><span class="co">#&gt; 1 /System/…     1 Helve… Bold  FALSE  TRUE  FALSE     bold   norm… FALSE   FALSE</span></span>
+<span id="cb6-25"><a href="#cb6-25" tabindex="-1"></a><span class="co">#&gt; # ℹ 13 more variables: scalable &lt;lgl&gt;, vertical &lt;lgl&gt;, n_glyphs &lt;int&gt;,</span></span>
+<span id="cb6-26"><a href="#cb6-26" tabindex="-1"></a><span class="co">#&gt; #   n_sizes &lt;int&gt;, n_charmaps &lt;int&gt;, bbox &lt;list&gt;, max_ascend &lt;dbl&gt;,</span></span>
+<span id="cb6-27"><a href="#cb6-27" tabindex="-1"></a><span class="co">#&gt; #   max_descend &lt;dbl&gt;, max_advance_width &lt;dbl&gt;, max_advance_height &lt;dbl&gt;,</span></span>
+<span id="cb6-28"><a href="#cb6-28" tabindex="-1"></a><span class="co">#&gt; #   lineheight &lt;dbl&gt;, underline_pos &lt;dbl&gt;, underline_size &lt;dbl&gt;</span></span></code></pre></div>
 </div>
 
 
